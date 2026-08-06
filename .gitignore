@@ -1,4 +1,4 @@
-node_modules
+node_modules/
 .env
 .env.sample
 package-lock.json
@@ -10,5 +10,5 @@ logs/
 public/temp/*
 !public/temp/.gitkeep
 
-.vscode
+.vscode/
 .DS_Store
