@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import authRouter from "./routes/auth.routes.js";
+import destinationRouter from "./routes/destination.routes.js";
+import { errorHandler } from "./middlewares/error.middlewares.js";
 
 const app = express();
 
@@ -38,9 +40,11 @@ app.use(morgan("dev"));
 
 app.use("/api/v1/auth", authRouter);
 
-/* ===============================
-        Health Check Route
-================================ */
+app.use("/api/v1/destinations", destinationRouter);
+
+app.use(errorHandler);
+
+// Health Check Route
 
 app.get("/", (req, res) => {
     res.status(200).json({
