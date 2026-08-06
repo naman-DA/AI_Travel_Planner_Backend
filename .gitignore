@@ -1,0 +1,14 @@
+node_modules
+.env
+.env.sample
+package-lock.json
+
+uploads/
+logs/
+
+# Temporary uploads
+public/temp/*
+!public/temp/.gitkeep
+
+.vscode
+.DS_Store
