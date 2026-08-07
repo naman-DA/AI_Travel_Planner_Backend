@@ -83,7 +83,7 @@ const createDestination = async ({
   //  Upload Cover
     
     if (coverImage) {
-      const response = await uploadOnCloudinary(
+        const response = await uploadOnCloudinary(
           coverImage.path,
           "ai-travel-planner/destinations/cover"
       );
@@ -264,6 +264,7 @@ const getAllDestinations = async ({
     const [destinations, total] =
         await Promise.all([
             Destination.find(query)
+                .select("-__v")
                 .sort(sortOption)
                 .skip(skip)
                 .limit(limit)
@@ -293,7 +294,9 @@ const getDestinationById = async (
     destinationId
 ) => {
     const destination =
-        await Destination.findById(destinationId).lean();
+        await Destination.findById(destinationId)
+        .select("-__v")
+        .lean();
             // .populate("hotels")
             // .populate("restaurants")
             // .populate("activities")
@@ -351,11 +354,12 @@ const searchDestinations = async (
             }
         ]
     })
-        .sort({
-            popularityScore: -1
-        })
-        .limit(20)
-        .lean();
+    .select("-__v")
+    .sort({
+        popularityScore: -1
+    })
+    .limit(20)
+    .lean();
 };
 
 // Filter Destinations
@@ -413,6 +417,7 @@ const filterDestinations = async ({
     }
 
     return await Destination.find(query)
+        .select("-__v")
         .sort({
             popularityScore: -1
         })

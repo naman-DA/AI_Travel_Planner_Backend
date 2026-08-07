@@ -5,6 +5,7 @@ import morgan from "morgan";
 import authRouter from "./routes/auth.routes.js";
 import destinationRouter from "./routes/destination.routes.js";
 import hotelRouter from "./routes/hotel.routes.js";
+import restaurantRouter from "./routes/restaurant.routes.js";
 import { errorHandler } from "./middlewares/error.middlewares.js";
 
 const app = express();
@@ -42,6 +43,8 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/destinations", destinationRouter);
 
 app.use("/api/v1/hotels", hotelRouter);
+
+app.use("/api/v1/restaurants", restaurantRouter);
 
 app.use(errorHandler);
 
