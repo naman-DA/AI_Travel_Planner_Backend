@@ -1,210 +1,230 @@
 import mongoose, { Schema } from "mongoose";
 
-// Reusable Schemas
+// Travelers Schema
+
+const travelersSchema = new Schema(
+    {
+        adults: {
+            type: Number,
+            default: 1,
+            min: 1,
+        },
+
+        children: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        infants: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+    },
+    {
+        _id: false,
+    }
+);
+
+// Budget Schema
+
+const budgetSchema = new Schema(
+    {
+        estimatedBudget: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        actualBudget: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        currency: {
+            type: String,
+            default: "INR",
+        },
+
+        budgetType: {
+            type: String,
+            enum: [
+                "Budget",
+                "Mid-Range",
+                "Luxury",
+            ],
+            default: "Mid-Range",
+        },
+    },
+    {
+        _id: false,
+    }
+);
+
+// Preferences Schema
+
+const preferencesSchema = new Schema(
+    {
+        travelStyles: [
+            {
+                type: String,
+            },
+        ],
+
+        interests: [
+            {
+                type: String,
+            },
+        ],
+
+        foodPreferences: [
+            {
+                type: String,
+            },
+        ],
+
+        transportPreference: {
+            type: String,
+            enum: [
+                "Cab",
+                "Rental Car",
+                "Bike",
+                "Public Transport",
+                "Walking",
+            ],
+            default: "Cab",
+        },
+    },
+    {
+        _id: false,
+    }
+);
 
 // Flight Schema
 
-const flightSchema = new Schema(
+const selectedFlightSchema = new Schema(
+    {
+        airline: String,
+        flightNumber: String,
+        departureAirport: String,
+        arrivalAirport: String,
+        departureTime: Date,
+        arrivalTime: Date,
+        cabinClass: {
+            type: String,
+            enum: [
+                "Economy",
+                "Premium Economy",
+                "Business",
+                "First",
+            ],
+            default: "Economy",
+        },
+        passengers: {
+            type: Number,
+            default: 1,
+        },
+        duration: String,
+        price: {
+            type: Number,
+            default: 0,
+        },
+        currency: {
+            type: String,
+            default: "INR",
+        },
+        provider: {
+            type: String,
+            default: "",
+        },
+        bookingReference: {
+            type: String,
+            default: "",
+        },
+        status: {
+            type: String,
+            enum: [
+                "Pending",
+                "Booked",
+                "Cancelled",
+            ],
+            default: "Pending",
+        },
+    },
+    {
+        _id: false,
+    }
+);
+
+// Itinerary Item
+
+const itineraryItemSchema = new Schema(
   {
-    provider: String,
-
-    airline: String,
-
-    flightNumber: String,
-
-    departureAirport: String,
-
-    arrivalAirport: String,
-
-    departureTime: Date,
-
-    arrivalTime: Date,
-
-    duration: String,
-
-    cabinClass: String,
-
-    baggage: String,
-
-    stops: Number,
-
-    price: Number,
-
-    currency: {
+    time: {
       type: String,
-      default: "INR",
+      required: true,
     },
 
-    bookingURL: String,
-  },
-  { _id: false }
-);
+    type: {
+      type: String,
+      enum: [
+        "Hotel",
+        "Restaurant",
+        "Activity",
+        "Flight",
+        "Transport",
+        "Custom",
+      ],
+      required: true,
+    },
 
-// Hotel Schema
+    reference: {
+      type: Schema.Types.ObjectId,
+      refPath: "itinerary.items.type",
+    },
 
-const hotelSchema = new Schema(
-  {
-    provider: String,
+    title: {
+      type: String,
+      default: "",
+    },
 
-    hotelName: String,
+    notes: {
+      type: String,
+      default: "",
+    },
 
-    rating: Number,
+    duration: {
+      type: String,
+      default: 60,
+    },
 
-    address: String,
-
-    latitude: Number,
-
-    longitude: Number,
-
-    roomType: String,
-
-    checkIn: Date,
-
-    checkOut: Date,
-
-    amenities: [String],
-
-    pricePerNight: Number,
-
-    totalPrice: Number,
-
-    bookingURL: String,
-  },
-  { _id: false }
-);
-
-// Activity Schema
-
-const activitySchema = new Schema(
-  {
-    name: String,
-
-    category: String,
-
-    description: String,
-
-    location: String,
-
-    latitude: Number,
-
-    longitude: Number,
-
-    startTime: String,
-
-    endTime: String,
-
-    duration: String,
-
-    estimatedCost: Number,
-
-    bookingRequired: {
+    completed: {
       type: Boolean,
       default: false,
     },
   },
-  { _id: false }
+  {
+    _id: true,
+  }
 );
 
-// Weather Schema
+// Day wise Itinerary
 
-const weatherSchema = new Schema(
+const itineraryDaySchema = new Schema(
   {
-    date: Date,
-
-    temperature: Number,
-
-    feelsLike: Number,
-
-    humidity: Number,
-
-    windSpeed: Number,
-
-    condition: String,
-
-    icon: String,
-  },
-  { _id: false }
-);
-
-// Meal Schema
-
-const mealSchema = new Schema(
-  {
-    breakfast: String,
-
-    lunch: String,
-
-    dinner: String,
-  },
-  { _id: false }
-);
-
-// Transport Schema
-
-const transportSchema = new Schema(
-  {
-    mode: String,
-
-    from: String,
-
-    to: String,
-
-    estimatedCost: Number,
-  },
-  { _id: false }
-);
-
-// Daily Plan Schema
-
-const dailyPlanSchema = new Schema(
-  {
-    day: Number,
-
-    date: Date,
-
-    activities: [activitySchema],
-
-    meals: mealSchema,
-
-    transportation: transportSchema,
-
-    estimatedCost: Number,
-  },
-  { _id: false }
-);
-
-// Location Schema
-
-const locationSchema = new Schema(
-  {
-    city: {
-      type: String,
+    day: {
+      type: Number,
       required: true,
-      trim: true,
     },
 
-    state: {
-      type: String,
-      trim: true,
-    },
-
-    country: {
-      type: String,
+    date: {
+      type: Date,
       required: true,
-      trim: true,
     },
 
-    airportCode: {
-      type: String,
-      uppercase: true,
-      trim: true,
-    },
-
-    latitude: Number,
-
-    longitude: Number,
-
-    address: String,
+    items: [itineraryItemSchema],
   },
   {
     _id: false,
@@ -215,7 +235,29 @@ const locationSchema = new Schema(
 
 const tripSchema = new Schema(
   {
-    // User
+    // Basic Information
+
+    tripName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    description: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+
+    // References
 
     user: {
       type: Schema.Types.ObjectId,
@@ -223,42 +265,35 @@ const tripSchema = new Schema(
       required: true,
       index: true,
     },
-
-    // Trip Details
-
-    tripTitle: {
-        type: String,
-        trim: true,
-        default: function () {
-          return `${this.destination.city} Trip`;
-        }
-    },
-
-    tripType: {
-      type: String,
-      enum: ["AI", "Manual"],
-      default: "AI",
-    },
-
-    aiPrompt: {
-      type: String,
-      trim: true,
-    },
-
-    source: {
-      type: locationSchema,
-      required: true,
-    },
-
+    
     destination: {
-      type: locationSchema,
-      required: true,
-    },
-
-    destinationRef: {
       type: Schema.Types.ObjectId,
       ref: "Destination",
+      required: true,
+      index: true,
     },
+
+    hotel: {
+      type: Schema.Types.ObjectId,
+      ref: "Hotel",
+      default: null,
+    },
+
+    restaurants: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Restaurant",
+      },
+    ],
+
+    activities: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Activity",
+      },
+    ],
+
+    // Tavel Dates
 
     startDate: {
       type: Date,
@@ -270,306 +305,180 @@ const tripSchema = new Schema(
       required: true,
     },
 
-    duration: Number,
+    totalDays: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
 
-    // Travellers
+    // Travelers
 
     travelers: {
-      adults: {
-        type: Number,
-        required: true,
-        default: 1,
-        min: 1,
-      },
-
-      children: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-
-      infants: {
-        type: Number,
-        default: 0,
-        min: 0,        
-      },
+      type: travelersSchema,
+      default: () => ({}),
     },
 
     // Budget
 
     budget: {
-
-        amount: {
-            type: Number,
-            required: true,
-            min: 0,
-        },
-
-        currency: {
-            type: String,
-            default: "INR",
-        },
-
-        estimatedBreakdown: {
-
-            flights: {
-                type: Number,
-                default: 0,
-            },
-
-            hotels: {
-                type: Number,
-                default: 0,
-            },
-
-            food: {
-                type: Number,
-                default: 0,
-            },
-
-            transportation: {
-                type: Number,
-                default: 0,
-            },
-
-            activities: {
-                type: Number,
-                default: 0,
-            },
-
-            miscellaneous: {
-                type: Number,
-                default: 0,
-            },
-
-            total: {
-                type: Number,
-                default: 0,
-            }
-
-        }
-
+      type: budgetSchema,
+      default: () => ({}),
     },
 
-    //  User Preferences
+    // Preferences
 
     preferences: {
-
-      accommodation: String,
-
-      transportation: String,
-
-      foodPreference: String,
-
-      travelStyle: String,
-
-      destinationType: String,
-
-      preferredWeather: String,
-
+      type: preferencesSchema,
+      default: () => ({}),
     },
 
-    // Flights
+    // Selected Flight
 
-    flightOptions: [flightSchema],
-
-    selectedFlight: flightSchema,
-
-    // Hotels
-
-    hotelOptions: [hotelSchema],
-
-    selectedHotel: hotelSchema,
-
-    // Weather Forecast
-
-    weatherForecast: [weatherSchema],
-
-    // AI Generated Daily Itinerary
-
-    dailyPlans: [dailyPlanSchema],
-
-    // Booking Links
-
-    bookingLinks: {
-
-      flight: String,
-
-      hotel: String,
-
-      package: String,
-
+    selectedFlight: {
+      type: selectedFlightSchema,
+      default: null,
     },
 
-    // Estimated Cost Summary
+    // Day-wise Itinerary
 
-    estimatedCost: {
+    itinerary: [itineraryDaySchema,],
 
-      flights: {
-        type: Number,
-        default: 0,
-      },
+    // AI Information
 
-      hotels: {
-        type: Number,
-        default: 0,
-      },
-
-      food: {
-        type: Number,
-        default: 0,
-      },
-
-      transportation: {
-        type: Number,
-        default: 0,
-      },
-
-      activities: {
-        type: Number,
-        default: 0,
-      },
-
-      miscellaneous: {
-        type: Number,
-        default: 0,
-      },
-
-      total: {
-        type: Number,
-        default: 0,
-      },
-
+    isAIGenerated: {
+      type: Boolean,
+      default: false,
     },
 
-    // AI Metadata
-
-    aiMetadata: {
-
-      modelUsed: {
-        type: String,
-        default: "gemini",
-      },
-
-      generatedAt: Date,
-
-      regeneratedCount: {
-        type: Number,
-        default: 0,
-      },
-
-      promptTokens: Number,
-
-      completionTokens: Number,
-
-    },
-
-    // Booking Status
-
-    bookingStatus: {
-
+    aiPrompt: {
       type: String,
-
-      enum: [
-
-        "planning",
-
-        "partially_booked",
-
-        "booked",
-
-        "completed",
-
-        "cancelled",
-
-      ],
-
-      default: "planning",
-
+      default: "",
     },
 
-    // Trip Status
+    aiSummary: {
+      type: String,
+      default: "",
+    },
+
+    // Status
 
     status: {
-
       type: String,
-
       enum: [
-
-        "draft",
-
-        "upcoming",
-
-        "ongoing",
-
-        "completed",
-
-        "cancelled",
-
+        "Planning",
+        "Confirmed",
+        "Completed",
+        "Cancelled",
       ],
-
-      default: "draft",
-
+      default: "Planning",
     },
 
-    // Visibility
+    // Statistics
+
+    statistics: {
+      totalViews: {
+        type: Number,
+        default: 0,
+      },
+
+      totalBookings: {
+        type: Number,
+        default: 0,
+      },
+
+      totalShares: {
+        type: Number,
+        default: 0,
+      },
+    },
+
+    // Flags
 
     isPublic: {
-
       type: Boolean,
-
       default: false,
-
     },
 
-    // User Notes
-
-    notes: {
-
-      type: String,
-
-      trim: true,
-
+    isArchived: {
+      type: Boolean,
+      default: false,
     },
 
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-
   {
-
     timestamps: true,
-
   }
-
 );
 
 // Indexes
 
 tripSchema.index({
-  user: 1,
-  createdAt: -1,
+    user: 1,
 });
 
 tripSchema.index({
-  "destination.country": 1,
-  "destination.city": 1,
+    destination: 1,
 });
 
 tripSchema.index({
-  startDate: 1,
-  endDate: 1,
+    status: 1,
 });
 
 tripSchema.index({
-  bookingStatus: 1,
+    startDate: 1,
+    endDate: 1,
 });
 
 tripSchema.index({
-  status: 1,
+    isActive: 1,
 });
 
-// Model
+tripSchema.index({
+    createdAt: -1,
+});
 
-export const Trip = mongoose.model(
-  "Trip",
-  tripSchema
+tripSchema.index({
+    tripName: "text",
+    description: "text",
+});
+
+tripSchema.pre("save", function () {
+    if (this.startDate && this.endDate) {
+        const diff = Math.ceil((this.endDate - this.startDate) / (1000 * 60 * 60 * 24)) + 1;
+        
+        this.totalDays = Math.max(diff, 1);
+    }
+  }
 );
+
+tripSchema.virtual(
+    "totalTravelers"
+).get(function () {
+    return (
+        this.travelers.adults +
+        this.travelers.children +
+        this.travelers.infants
+    );
+});
+
+tripSchema.set(
+    "toJSON",
+    {
+        virtuals: true,
+        versionKey: false,
+    }
+);
+
+tripSchema.set(
+    "toObject",
+    {
+        virtuals: true,
+        versionKey: false,
+    }
+);
+
+export const Trip = mongoose.model("Trip", tripSchema);
