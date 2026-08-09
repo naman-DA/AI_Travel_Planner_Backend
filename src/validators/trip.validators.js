@@ -66,7 +66,7 @@ const validateCreateTrip = (data) => {
     }
 
     if (
-        new Date(startDate) >
+        new Date(startDate) >=
         new Date(endDate)
     ) {
         throw new ApiError(

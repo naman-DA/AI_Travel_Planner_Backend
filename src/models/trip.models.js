@@ -316,6 +316,7 @@ const tripSchema = new Schema(
     travelers: {
       type: travelersSchema,
       default: () => ({}),
+      required: true,
     },
 
     // Budget
@@ -458,10 +459,14 @@ tripSchema.pre("save", function () {
 tripSchema.virtual(
     "totalTravelers"
 ).get(function () {
+    if (!this.travelers) {
+        return 0;
+    }
+
     return (
-        this.travelers.adults +
-        this.travelers.children +
-        this.travelers.infants
+        (this.travelers.adults || 0) +
+        (this.travelers.children || 0) +
+        (this.travelers.infants || 0)
     );
 });
 

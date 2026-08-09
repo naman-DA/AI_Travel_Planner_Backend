@@ -13,7 +13,7 @@ const populateTrip = (query) => {
     return query
         .populate(
             "user",
-            "fullName username email avatar"
+            "fullName email avatar"
         )
         .populate(
             "destination",
