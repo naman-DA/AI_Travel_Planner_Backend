@@ -11,6 +11,7 @@ import tripRouter from "./routes/trip.routes.js";
 import bookingRouter from "./routes/booking.routes.js";
 import paymentRouter from "./routes/payment.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
+import reviewRouter from "./routes/review.routes.js";
 import { errorHandler } from "./middlewares/error.middlewares.js";
 
 const app = express();
@@ -60,6 +61,8 @@ app.use("/api/v1/bookings", bookingRouter);
 app.use("/api/v1/payments", paymentRouter);
 
 app.use("/api/v1/notifications", notificationRouter);
+
+app.use("/api/v1/reviews", reviewRouter);
 
 app.use(errorHandler);
 
