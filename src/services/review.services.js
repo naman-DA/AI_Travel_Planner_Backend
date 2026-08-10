@@ -126,7 +126,6 @@ const createReview = async (
                 reviewData.reviewType,
             referenceId:
                 reviewData.referenceId,
-            isActive: true,
         });
 
     if (existingReview) {
