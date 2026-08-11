@@ -148,6 +148,49 @@ const bookingSchema = new Schema(
             default: null,
         },
 
+        cancellationPolicy: {
+            type: new Schema(
+                {
+                    type: {
+                        type: String,
+                        enum: [
+                            "FreeCancellation",
+                            "PartialRefund",
+                            "NonRefundable",
+                        ],
+                        required: true,
+                    },
+
+                    freeCancellationUntil: {
+                        type: Date,
+                        default: null,
+                    },
+
+                    rules: [
+                        {
+                            beforeHours: {
+                                type: Number,
+                                required: true,
+                                min: 0,
+                            },
+
+                            refundPercentage: {
+                                type: Number,
+                                required: true,
+                                min: 0,
+                                max: 100,
+                            },
+                        },
+                    ],
+                },
+                {
+                    _id: false,
+                }
+            ),
+
+            default: null,
+        },
+
         isCancelled: {
             type: Boolean,
             default: false,
