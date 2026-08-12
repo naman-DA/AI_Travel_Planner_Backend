@@ -84,6 +84,107 @@ const bookingSchema = new Schema(
             required: true,
         },
 
+        passengers: [
+            {
+                traveler: {
+                    type: Schema.Types.ObjectId,
+                    ref: "Traveler",
+                    required: true,
+                },
+
+                firstName: {
+                    type: String,
+                    required: true,
+                    trim: true,
+                },
+
+                lastName: {
+                    type: String,
+                    required: true,
+                    trim: true,
+                },
+
+                dateOfBirth: {
+                    type: Date,
+                    required: true,
+                },
+
+                gender: {
+                    type: String,
+                    enum: [
+                        "Male",
+                        "Female",
+                        "Other",
+                    ],
+                    required: true,
+                },
+
+                nationality: {
+                    type: String,
+                    required: true,
+                    trim: true,
+                    uppercase: true,
+                },
+
+                email: {
+                    type: String,
+                    trim: true,
+                    lowercase: true,
+                    default: "",
+                },
+
+                phone: {
+                    type: String,
+                    trim: true,
+                    default: "",
+                },
+
+                travelerType: {
+                    type: String,
+                    enum: [
+                        "Adult",
+                        "Child",
+                        "Infant",
+                    ],
+                    required: true,
+                },
+
+                passport: {
+                    type: new Schema(
+                        {
+                            passportNumber: {
+                                type: String,
+                                trim: true,
+                                uppercase: true,
+                                default: "",
+                            },
+
+                            issueDate: {
+                                type: Date,
+                                default: null,
+                            },
+
+                            expiryDate: {
+                                type: Date,
+                                default: null,
+                            },
+
+                            issuingCountry: {
+                                type: String,
+                                trim: true,
+                                uppercase: true,
+                                default: "",
+                            },
+                        },
+                        {
+                            _id: false,
+                        }
+                    ),
+                    default: null,
+                },
+            },
+        ],
+
         totalAmount: {
             type: Number,
             required: true,

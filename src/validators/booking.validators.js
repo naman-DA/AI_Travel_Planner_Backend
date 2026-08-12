@@ -15,6 +15,7 @@ const validateCreateBooking = (
         checkInDate,
         checkOutDate,
         guests,
+        travelerIds,
         totalAmount,
         paymentMethod,
     } = data;
@@ -191,6 +192,45 @@ const validateCreateBooking = (
         );
     }
 
+    // Travelers
+
+    if (
+        travelerIds !== undefined
+    ) {
+        if (
+            !Array.isArray(travelerIds)
+        ) {
+            throw new ApiError(
+                400,
+                "Traveler IDs must be an array."
+            );
+        }
+
+        if (
+            travelerIds.length === 0
+        ) {
+            throw new ApiError(
+                400,
+                "At least one traveler is required."
+            );
+        }
+
+        travelerIds.forEach(
+            (travelerId) => {
+                if (
+                    !mongoose.Types.ObjectId.isValid(
+                        travelerId
+                    )
+                ) {
+                    throw new ApiError(
+                        400,
+                        "Invalid traveler ID."
+                    );
+                }
+            }
+        );
+    }
+    
     // Amount
 
     if (

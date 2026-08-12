@@ -3,6 +3,7 @@ import { User } from "../models/user.models.js";
 import { Trip } from "../models/trip.models.js";
 import { Hotel } from "../models/hotel.models.js";
 import { Activity } from "../models/activity.models.js";
+import { Traveler } from "../models/traveler.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { generateBookingReference } from "../utils/generateBookingReference.js";
 
@@ -23,6 +24,10 @@ const populateBooking = (query) => {
         .populate(
             "activities",
             "name category price coverImage"
+        )
+        .populate(
+            "passengers.traveler",
+            "firstName lastName dateOfBirth gender nationality email phone travelerType"
         );
 };
 
@@ -99,6 +104,111 @@ const validateReferences = async (
     }
 };
 
+const createPassengerSnapshots = async ({
+    travelerIds,
+    user,
+}) => {
+    if (
+        !travelerIds ||
+        travelerIds.length === 0
+    ) {
+        return [];
+    }
+
+    // Remove duplicate traveler IDs
+
+    const uniqueTravelerIds = [
+        ...new Set(
+            travelerIds.map(
+                (id) => String(id)
+            )
+        ),
+    ];
+
+    // Fetch only active travelers
+    // belonging to this user
+
+    const travelers =
+        await Traveler.find({
+            _id: {
+                $in: uniqueTravelerIds,
+            },
+            user,
+            isActive: true,
+        });
+
+    // Ensure every requested traveler
+    // was actually found
+
+    if (
+        travelers.length !==
+        uniqueTravelerIds.length
+    ) {
+        throw new ApiError(
+            404,
+            "One or more travelers were not found."
+        );
+    }
+
+    // Create immutable booking snapshots
+
+    return travelers.map(
+        (traveler) => ({
+            traveler:
+                traveler._id,
+
+            firstName:
+                traveler.firstName,
+
+            lastName:
+                traveler.lastName,
+
+            dateOfBirth:
+                traveler.dateOfBirth,
+
+            gender:
+                traveler.gender,
+
+            nationality:
+                traveler.nationality,
+
+            email:
+                traveler.email,
+
+            phone:
+                traveler.phone,
+
+            travelerType:
+                traveler.travelerType,
+
+            passport:
+                traveler.passport
+                    ? {
+                        passportNumber:
+                            traveler
+                                .passport
+                                .passportNumber,
+
+                        issueDate:
+                            traveler
+                                .passport
+                                .issueDate,
+
+                        expiryDate:
+                            traveler
+                                .passport
+                                .expiryDate,
+
+                        issuingCountry:
+                            traveler
+                                .passport
+                                .issuingCountry,
+                    }
+                    : null,
+        })
+    );
+};
+
 const createBooking = async (
     bookingData
 ) => {
@@ -108,31 +218,53 @@ const createBooking = async (
         bookingData
     );
 
+    // Create passenger snapshots
+
+    const passengers =
+        await createPassengerSnapshots({
+            travelerIds:
+                bookingData.travelerIds,
+            user:
+                bookingData.user,
+        });
+
     // Generate Unique Booking Reference
 
     let bookingReference;
+
     do {
-        bookingReference = generateBookingReference();
-    } 
-    while (
+        bookingReference =
+            generateBookingReference();
+    } while (
         await Booking.exists({
             bookingReference,
         })
     );
 
+    // Remove travelerIds because
+    // Booking schema stores passengers,
+    // not travelerIds
+
+    const {
+        travelerIds,
+        ...bookingFields
+    } = bookingData;
+
     // Create Booking
 
-    const booking = await Booking.create({
-        ...bookingData,
-        bookingReference,
-    });
+    const booking =
+        await Booking.create({
+            ...bookingFields,
+            passengers,
+            bookingReference,
+        });
 
-    const populatedBooking = await populateBooking(
-        Booking.findById(booking._id)
-    );
-
-    console.log("Booking Guests:", populatedBooking.guests);
-    console.log("Booking:", populatedBooking);
+    const populatedBooking =
+        await populateBooking(
+            Booking.findById(
+                booking._id
+            )
+        );
 
     return populatedBooking;
 };
