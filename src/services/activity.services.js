@@ -7,6 +7,10 @@ import {
     uploadOnCloudinary,
     deleteFromCloudinary,
 } from "../utils/cloudinary.js";
+import {
+    geoapifyClient,
+    GEOAPIFY_API_KEY,
+} from "../config/geoapify.js";
 
 // Helper Functions
 
@@ -465,6 +469,326 @@ const searchActivities = async (
         .lean();
 };
 
+// Search Activities from Geoapify
+
+const searchExternalActivities = async ({
+    destinationId,
+    category,
+    limit = 20,
+}) => {
+    const destination =
+        await Destination.findById(
+            destinationId
+        ).select(
+            "name city country location"
+        );
+
+    if (!destination) {
+        throw new ApiError(
+            404,
+            "Destination not found."
+        );
+    }
+
+    const coordinates =
+        destination.location?.coordinates;
+
+    if (
+        !Array.isArray(coordinates) ||
+        coordinates.length !== 2
+    ) {
+        throw new ApiError(
+            400,
+            "Destination coordinates are not available."
+        );
+    }
+
+    const [
+        longitude,
+        latitude,
+    ] = coordinates;
+
+    const categories =
+        category ||
+        "tourism,tourism.sights,tourism.attraction";
+
+    try {
+        const response =
+            await geoapifyClient.get(
+                "/v2/places",
+                {
+                    params: {
+                        categories,
+
+                        filter:
+                            `circle:${longitude},${latitude},10000`,
+
+                        bias:
+                            `proximity:${longitude},${latitude}`,
+
+                        limit: Math.min(
+                            Number(limit) || 20,
+                            50
+                        ),
+
+                        lang: "en",
+
+                        apiKey:
+                            GEOAPIFY_API_KEY,
+                    },
+                }
+            );
+
+        const features =
+            Array.isArray(
+                response.data?.features
+            )
+                ? response.data.features
+                : [];
+
+        return features
+            .map((feature) => {
+                const properties =
+                    feature?.properties || {};
+
+                const [
+                    lon,
+                    lat,
+                ] =
+                    feature?.geometry
+                        ?.coordinates || [];
+
+                if (
+                    !Number.isFinite(
+                        Number(lon)
+                    ) ||
+                    !Number.isFinite(
+                        Number(lat)
+                    )
+                ) {
+                    return null;
+                }
+
+                return {
+                    geoapifyPlaceId:
+                        properties.place_id ||
+                        null,
+
+                    name:
+                        properties.name ||
+                        properties.address_line1 ||
+                        "Activity",
+
+                    description:
+                        properties.address_line2 ||
+                        "",
+
+                    destination:
+                        destination._id,
+
+                    address:
+                        properties.formatted ||
+                        "",
+
+                    city:
+                        properties.city ||
+                        destination.city,
+
+                    state:
+                        properties.state ||
+                        "",
+
+                    country:
+                        properties.country ||
+                        destination.country,
+
+                    location: {
+                        type: "Point",
+                        coordinates: [
+                            Number(lon),
+                            Number(lat),
+                        ],
+                    },
+
+                    category:
+                        properties.categories
+                            ?.find((item) =>
+                                item.startsWith(
+                                    "tourism"
+                                )
+                            ) ||
+                        "Sightseeing",
+
+                    duration: 1,
+
+                    durationUnit: "Hours",
+
+                    price: 0,
+
+                    currency: "INR",
+
+                    difficulty: "Easy",
+
+                    minimumAge: 0,
+
+                    maximumAge: 100,
+
+                    minimumParticipants: 1,
+
+                    maximumParticipants: 20,
+
+                    languages: [],
+
+                    included: [],
+
+                    excluded: [],
+
+                    meetingPoint:
+                        properties.formatted ||
+                        "",
+
+                    averageRating: 0,
+
+                    reviewCount: 0,
+
+                    coverImage: null,
+
+                    galleryImages: [],
+
+                    popularityScore: 0,
+
+                    aiScore: 0,
+
+                    isFeatured: false,
+
+                    isActive: true,
+                };
+            })
+            .filter(Boolean);
+
+    } catch (error) {
+        console.error(
+            "Geoapify activity search error:",
+            error.response?.data ||
+                error.message
+        );
+
+        throw new ApiError(
+            error.response?.status ||
+                502,
+            "Unable to fetch activities from Geoapify."
+        );
+    }
+};
+
+const saveExternalActivity = async ({
+    activityData,
+}) => {
+    const {
+        geoapifyPlaceId,
+        destination,
+        name,
+        description = "",
+        address = "",
+        city = "",
+        state = "",
+        country = "",
+        location,
+        category = "Sightseeing",
+    } = activityData;
+
+    if (!geoapifyPlaceId) {
+        throw new ApiError(
+            400,
+            "Geoapify place ID is required."
+        );
+    }
+
+    if (!destination) {
+        throw new ApiError(
+            400,
+            "Destination is required."
+        );
+    }
+
+    const destinationExists =
+        await Destination.exists({
+            _id: destination,
+            isActive: true,
+        });
+
+    if (!destinationExists) {
+        throw new ApiError(
+            404,
+            "Destination not found."
+        );
+    }
+
+    const existing =
+        await Activity.findOne({
+            geoapifyPlaceId,
+        });
+
+    if (existing) {
+        return existing;
+    }
+
+    const slug = slugify(
+        `${name}-${city}-${country}`,
+        {
+            lower: true,
+            strict: true,
+        }
+    );
+
+    return await Activity.create({
+        name,
+        slug,
+        description,
+        destination,
+        address,
+        city,
+        state,
+        country,
+        location,
+
+        category,
+
+        duration: 1,
+        durationUnit: "Hours",
+
+        price: 0,
+        currency: "INR",
+
+        difficulty: "Easy",
+
+        minimumAge: 0,
+        maximumAge: 100,
+
+        minimumParticipants: 1,
+        maximumParticipants: 20,
+
+        included: [],
+        excluded: [],
+        languages: [],
+
+        meetingPoint:
+            address,
+
+        averageRating: 0,
+        reviewCount: 0,
+
+        coverImage: null,
+        galleryImages: [],
+
+        popularityScore: 0,
+        aiScore: 0,
+
+        isFeatured: false,
+        isActive: true,
+    });
+};
+
 // Filter Activities
 
 const filterActivities = async ({
@@ -756,6 +1080,8 @@ export const activityService = {
     getAllActivities,
     getActivityById,
     searchActivities,
+    searchExternalActivities,
+    saveExternalActivity,
     filterActivities,
     updateActivity,
     deleteActivity,

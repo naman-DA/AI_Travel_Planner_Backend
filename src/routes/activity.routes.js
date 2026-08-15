@@ -7,6 +7,8 @@ import {
     deleteActivity,
     searchActivities,
     filterActivities,
+    searchExternalActivities,
+    saveExternalActivity,
 } from "../controllers/activity.controllers.js";
 import { upload } from "../middlewares/multer.middlewares.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
@@ -20,7 +22,14 @@ router.get("/", getAllActivities);
 
 router.get("/search", searchActivities);
 
+router.get("/search-external", searchExternalActivities);
+
 router.get("/filter", filterActivities);
+
+router.post(
+    "/select",
+    verifyJWT,
+    saveExternalActivity);
 
 router.get("/:activityId", getActivityById);
 
