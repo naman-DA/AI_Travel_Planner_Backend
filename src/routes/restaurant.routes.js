@@ -6,9 +6,10 @@ import {
     updateRestaurant,
     deleteRestaurant,
     searchRestaurants,
+    searchExternalRestaurants,
+    saveExternalRestaurant,
     filterRestaurants,
-} from "../controllers/restaurant.controllers.js";
-import { upload } from "../middlewares/multer.middlewares.js";
+} from "../controllers/restaurant.controllers.js";import { upload } from "../middlewares/multer.middlewares.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 import { authorize } from "../middlewares/admin.middlewares.js";
 
@@ -27,8 +28,21 @@ router.get(
 );
 
 router.get(
+    "/search-external",
+    searchExternalRestaurants
+);
+
+router.get(
     "/filter",
     filterRestaurants
+);
+
+// Protected Selection
+
+router.post(
+    "/select",
+    verifyJWT,
+    saveExternalRestaurant
 );
 
 router.get(

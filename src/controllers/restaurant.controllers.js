@@ -121,6 +121,53 @@ const searchRestaurants = asyncHandler(async (req, res) => {
     );
 });
 
+const searchExternalRestaurants =
+    asyncHandler(async (req, res) => {
+        const {
+            destinationId,
+            limit = 20,
+        } = req.query;
+
+        if (!destinationId) {
+            throw new ApiError(
+                400,
+                "Destination ID is required."
+            );
+        }
+
+        const restaurants =
+            await restaurantService
+                .searchExternalRestaurants({
+                    destinationId,
+                    limit,
+                });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                restaurants,
+                "Restaurants fetched successfully from external API."
+            )
+        );
+});
+
+const saveExternalRestaurant =
+    asyncHandler(async (req, res) => {
+        const restaurant =
+            await restaurantService
+                .saveExternalRestaurant({
+                    restaurantData: req.body,
+                });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                restaurant,
+                "Restaurant selected successfully."
+            )
+        );
+});
+
 // Filter Restaurants
 
 const filterRestaurants = asyncHandler(async (req, res) => {
@@ -229,6 +276,8 @@ export {
     getAllRestaurants,
     getRestaurantById,
     searchRestaurants,
+    searchExternalRestaurants,
+    saveExternalRestaurant,
     filterRestaurants,
     updateRestaurant,
     deleteRestaurant,
