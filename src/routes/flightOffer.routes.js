@@ -6,6 +6,7 @@ import {
     selectFlightOffer,
     getSelectedFlightBookingDetails,
     getSelectedFlightBookingUrl,
+    searchFlightsByDestination,
 } from "../controllers/flightOffer.controllers.js";
 
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
@@ -16,6 +17,12 @@ router.post(
     "/search",
     verifyJWT,
     searchAndSaveFlightOffers
+);
+
+router.post(
+    "/search-by-destination",
+    verifyJWT,
+    searchFlightsByDestination
 );
 
 router.post(

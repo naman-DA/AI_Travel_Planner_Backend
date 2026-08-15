@@ -1,6 +1,7 @@
 import { FlightOffer } from "../models/flightOffer.models.js";
 import { Trip } from "../models/trip.models.js";
 import { ApiError } from "../utils/ApiError.js";
+
 import {
     googleFlightsProvider,
 } from "./googleFlightsProvider.services.js";
@@ -44,11 +45,17 @@ const parseProviderDate = (value) => {
 
             let hours = Number(hour);
 
-            if (meridiem.toUpperCase() === "PM" && hours !== 12) {
+            if (
+                meridiem.toUpperCase() === "PM" &&
+                hours !== 12
+            ) {
                 hours += 12;
             }
 
-            if (meridiem.toUpperCase() === "AM" && hours === 12) {
+            if (
+                meridiem.toUpperCase() === "AM" &&
+                hours === 12
+            ) {
                 hours = 0;
             }
 
@@ -123,9 +130,9 @@ const normalizeFlightOffer = ({
     if (!itinerary) {
         return null;
     }
-    
+
     const FLIGHT_OFFER_FRESHNESS_MS =
-    10 * 60 * 1000;
+        10 * 60 * 1000;
 
     const firstFlight =
         Array.isArray(itinerary.flights) &&
@@ -212,14 +219,12 @@ const normalizeFlightOffer = ({
                       },
 
                       durationMinutes:
-                          flight
-                              ?.duration
+                          flight?.duration
                               ?.raw ??
                           null,
 
                       durationText:
-                          flight
-                              ?.duration
+                          flight?.duration
                               ?.text ||
                           null,
 
@@ -228,13 +233,11 @@ const normalizeFlightOffer = ({
                           null,
 
                       airlineLogo:
-                          flight
-                              ?.airline_logo ||
+                          flight?.airline_logo ||
                           null,
 
                       flightNumber:
-                          flight
-                              ?.flight_number ||
+                          flight?.flight_number ||
                           null,
 
                       aircraft:
@@ -276,13 +279,11 @@ const normalizeFlightOffer = ({
                           null,
 
                       durationMinutes:
-                          layover
-                              ?.duration ??
+                          layover?.duration ??
                           null,
 
                       durationText:
-                          layover
-                              ?.duration_label ||
+                          layover?.duration_label ||
                           null,
 
                       city:
@@ -291,6 +292,24 @@ const normalizeFlightOffer = ({
                   })
               )
             : [];
+
+    /**
+     * IMPORTANT:
+     * Do not trust itinerary.stops blindly.
+     *
+     * Example:
+     * DEL → BAH → CDG
+     *
+     * flights.length = 2
+     * layovers.length = 1
+     *
+     * Therefore:
+     * stops = 1
+     */
+    const stops = Math.max(
+        flights.length - 1,
+        layovers.length
+    );
 
     return {
         user,
@@ -306,10 +325,17 @@ const normalizeFlightOffer = ({
             null,
 
         arrivalAirport:
-            firstFlight
-                ?.arrival_airport
-                ?.airport_code ||
-            null,
+            flights.length > 0
+                ? flights[
+                      flights.length - 1
+                  ]
+                      ?.arrivalAirport
+                      ?.airportCode ||
+                  null
+                : firstFlight
+                      ?.arrival_airport
+                      ?.airport_code ||
+                  null,
 
         departureTime,
 
@@ -391,13 +417,13 @@ const normalizeFlightOffer = ({
                 : null,
 
         price:
-            Number(itinerary?.price) || 0,
+            Number(itinerary?.price) ||
+            0,
 
         currency:
             currency.toUpperCase(),
 
-        stops:
-            Number(itinerary?.stops) || 0,
+        stops,
 
         airlineLogo:
             itinerary?.airline_logo ||
@@ -408,275 +434,246 @@ const normalizeFlightOffer = ({
             null,
 
         searchId,
+
         expiresAt: new Date(
             Date.now() +
                 FLIGHT_OFFER_FRESHNESS_MS
         ),
+
         isSelected: false,
 
         isActive: true,
     };
 };
 
-
 /**
  * Search and persist flight offers
  */
-const searchAndSaveFlightOffers = async ({
-    user,
-    trip = null,
-    departureIata,
-    arrivalIata,
-    outboundDate,
-    adults = 1,
-    travelClass = "ECONOMY",
-    currency = "INR",
-}) => {
-    const result =
-        await googleFlightsProvider.searchFlights({
-            departureIata,
-            arrivalIata,
-            outboundDate,
-            adults,
-            travelClass,
-            currency,
-        });
-
-    /*
-     * Use the same deterministic search identity
-     * as the provider/cache layer.
-     */
-    const searchId = [
+const searchAndSaveFlightOffers =
+    async ({
         user,
-        trip || "NO_TRIP",
-        departureIata.toUpperCase(),
-        arrivalIata.toUpperCase(),
+        trip = null,
+        departureIata,
+        arrivalIata,
         outboundDate,
-        Number(adults),
-        travelClass.toUpperCase(),
-        currency.toUpperCase(),
-    ].join("-");
-
-    /*
-     * If this search came from Redis, check whether
-     * we already have active offers for this exact
-     * search session.
-     */
-    const existingOffers =
-        await FlightOffer.find({
-            user,
-            searchId,
-            isActive: true,
-            $or: [
-                { expiresAt: null },
-                {
-                    expiresAt: {
-                        $gt: new Date(),
-                    },
-                },
-            ],
-        }).sort({
-            price: 1,
-        });
-
-    if (
-        existingOffers.length > 0
-    ) {
-        return {
-            searchId,
-            provider: "GoogleFlights",
-            offers: existingOffers,
-            totalOffers:
-                existingOffers.length,
-            source:
-                result?.source || "cache",
-        };
-    }
-
-    const allItineraries = [
-        ...(Array.isArray(
-            result?.itineraries?.topFlights
-        )
-            ? result.itineraries.topFlights
-            : []),
-
-        ...(Array.isArray(
-            result?.itineraries?.otherFlights
-        )
-            ? result.itineraries.otherFlights
-            : []),
-    ];
-
-    if (!allItineraries.length) {
-        return {
-            searchId,
-            provider: "GoogleFlights",
-            offers: [],
-            totalOffers: 0,
-            source:
-                result?.source || "provider",
-        };
-    }
-
-    const normalizedOffers =
-        allItineraries
-            .map((itinerary) =>
-                normalizeFlightOffer({
-                    itinerary,
-                    user,
-                    trip,
+        adults = 1,
+        travelClass = "ECONOMY",
+        currency = "INR",
+    }) => {
+        const result =
+            await googleFlightsProvider
+                .searchFlights({
+                    departureIata,
+                    arrivalIata,
+                    outboundDate,
+                    adults,
+                    travelClass,
                     currency,
-                    searchId,
-                })
+                });
+
+        const searchId =
+            `${Date.now()}-${user}-${departureIata}-${arrivalIata}`;
+
+        const allItineraries = [
+            ...(Array.isArray(
+                result?.itineraries
+                    ?.topFlights
             )
-            .filter(Boolean);
+                ? result.itineraries.topFlights
+                : []),
 
-    if (!normalizedOffers.length) {
-        return {
-            searchId,
-            provider: "GoogleFlights",
-            offers: [],
-            totalOffers: 0,
-            source:
-                result?.source || "provider",
-        };
-    }
+            ...(Array.isArray(
+                result?.itineraries
+                    ?.otherFlights
+            )
+                ? result.itineraries.otherFlights
+                : []),
+        ];
 
-    /*
-     * This search is genuinely new.
-     *
-     * Deactivate older active offers for the same
-     * user/trip context before inserting the new session.
-     */
-    await FlightOffer.updateMany(
-        {
-            user,
-            isActive: true,
-            ...(trip
-                ? { trip }
-                : {}),
-            searchId: {
-                $ne: searchId,
-            },
-        },
-        {
-            $set: {
-                isActive: false,
-            },
+        if (!allItineraries.length) {
+            return {
+                searchId,
+                provider:
+                    "GoogleFlights",
+                offers: [],
+                totalOffers: 0,
+            };
         }
-    );
 
-    const offers =
-        await FlightOffer.insertMany(
-            normalizedOffers
+        const normalizedOffers =
+            allItineraries
+                .map((itinerary) =>
+                    normalizeFlightOffer({
+                        itinerary,
+                        user,
+                        trip,
+                        currency,
+                        searchId,
+                    })
+                )
+                .filter(Boolean);
+
+        if (!normalizedOffers.length) {
+            return {
+                searchId,
+                provider:
+                    "GoogleFlights",
+                offers: [],
+                totalOffers: 0,
+            };
+        }
+
+        /*
+         * Remove previous active offers for the same
+         * user/search context so stale search results
+         * don't remain active indefinitely.
+         */
+        await FlightOffer.updateMany(
+            {
+                user,
+                isActive: true,
+
+                ...(trip
+                    ? {
+                          trip,
+                      }
+                    : {}),
+            },
+            {
+                $set: {
+                    isActive: false,
+                },
+            }
         );
 
-    return {
-        searchId,
-        provider: "GoogleFlights",
-        offers,
-        totalOffers:
-            offers.length,
-        source:
-            result?.source || "provider",
+        const offers =
+            await FlightOffer.insertMany(
+                normalizedOffers
+            );
+
+        return {
+            searchId,
+            provider:
+                "GoogleFlights",
+            offers,
+            totalOffers:
+                offers.length,
+        };
     };
-};
 
 /**
  * Get user's flight offer by ID
  */
-const getFlightOfferById = async ({
-    flightOfferId,
-    user,
-}) => {
-    const offer = await FlightOffer.findOne({
-        _id: flightOfferId,
+const getFlightOfferById =
+    async ({
+        flightOfferId,
         user,
-        isActive: true,
-    }).exec();
+    }) => {
+        const offer =
+            await FlightOffer.findOne({
+                _id: flightOfferId,
+                user,
+                isActive: true,
+            }).exec();
 
-    if (!offer) {
-        throw new ApiError(
-            404,
-            "Flight offer not found."
-        );
-    }
+        if (!offer) {
+            throw new ApiError(
+                404,
+                "Flight offer not found."
+            );
+        }
 
-    return offer;
-};
+        return offer;
+    };
 
 /**
  * Select a flight offer
  */
-const selectFlightOffer = async ({
-    flightOfferId,
-    user,
-    trip = null,
-}) => {
-    const offer = await FlightOffer.findOne({
-        _id: flightOfferId,
+const selectFlightOffer =
+    async ({
+        flightOfferId,
         user,
-        isActive: true,
-        $or: [
-            { expiresAt: null },
-            { expiresAt: { $gt: new Date() } },
-        ],
-    })
-        .select("+bookingToken")
-        .exec();
+        trip = null,
+    }) => {
+        const offer =
+            await FlightOffer.findOne({
+                _id: flightOfferId,
+                user,
+                isActive: true,
 
-    if (!offer) {
-        throw new ApiError(
-            410,
-            "Flight offer has expired or is no longer available."
-        );
-    }
+                $or: [
+                    {
+                        expiresAt: null,
+                    },
+                    {
+                        expiresAt: {
+                            $gt: new Date(),
+                        },
+                    },
+                ],
+            })
+                .select("+bookingToken")
+                .exec();
 
-    if (trip) {
-        const tripDocument = await Trip.findOne({
-            _id: trip,
-            user,
-            isActive: true,
-        });
-
-        if (!tripDocument) {
+        if (!offer) {
             throw new ApiError(
-                404,
-                "Trip not found."
+                410,
+                "Flight offer has expired or is no longer available."
             );
         }
 
-        offer.trip = tripDocument._id;
-    }
+        if (trip) {
+            const tripDocument =
+                await Trip.findOne({
+                    _id: trip,
+                    user,
+                    isActive: true,
+                });
 
-    await FlightOffer.updateMany(
-        {
-            user,
-            isActive: true,
-            ...(offer.trip
-                ? { trip: offer.trip }
-                : {}),
-            _id: {
-                $ne: offer._id,
-            },
-        },
-        {
-            $set: {
-                isSelected: false,
-            },
+            if (!tripDocument) {
+                throw new ApiError(
+                    404,
+                    "Trip not found."
+                );
+            }
+
+            offer.trip =
+                tripDocument._id;
         }
-    );
 
-    offer.isSelected = true;
+        await FlightOffer.updateMany(
+            {
+                user,
+                isActive: true,
 
-    await offer.save();
+                ...(offer.trip
+                    ? {
+                          trip: offer.trip,
+                      }
+                    : {}),
 
-    const responseOffer = offer.toObject();
+                _id: {
+                    $ne: offer._id,
+                },
+            },
+            {
+                $set: {
+                    isSelected: false,
+                },
+            }
+        );
 
-    delete responseOffer.bookingToken;
+        offer.isSelected = true;
 
-    return responseOffer;
-};
+        await offer.save();
+
+        const responseOffer =
+            offer.toObject();
+
+        delete responseOffer.bookingToken;
+
+        return responseOffer;
+    };
 
 /**
  * Get booking details for selected offer
@@ -691,22 +688,14 @@ const getSelectedFlightBookingDetails =
                 _id: flightOfferId,
                 user,
                 isActive: true,
-                $or: [
-                    { expiresAt: null },
-                    {
-                        expiresAt: {
-                            $gt: new Date(),
-                        },
-                    },
-                ],
             })
                 .select("+bookingToken")
                 .exec();
 
         if (!offer) {
             throw new ApiError(
-                410,
-                "Flight offer has expired or is no longer available."
+                404,
+                "Flight offer not found."
             );
         }
 
@@ -721,7 +710,7 @@ const getSelectedFlightBookingDetails =
             .getBookingDetails(
                 offer.bookingToken
             );
-};
+    };
 
 /**
  * Get external booking URL for selected offer
@@ -736,22 +725,14 @@ const getSelectedFlightBookingUrl =
                 _id: flightOfferId,
                 user,
                 isActive: true,
-                $or: [
-                    { expiresAt: null },
-                    {
-                        expiresAt: {
-                            $gt: new Date(),
-                        },
-                    },
-                ],
             })
                 .select("+bookingToken")
                 .exec();
 
         if (!offer) {
             throw new ApiError(
-                410,
-                "Flight offer has expired or is no longer available."
+                404,
+                "Flight offer not found."
             );
         }
 
@@ -762,6 +743,7 @@ const getSelectedFlightBookingUrl =
             );
         }
 
+        // 1. Search token -> provider booking details
         const bookingDetails =
             await googleFlightsProvider
                 .getBookingDetails(
@@ -769,7 +751,8 @@ const getSelectedFlightBookingUrl =
                 );
 
         const bookings =
-            bookingDetails?.bookings || [];
+            bookingDetails?.bookings ||
+            [];
 
         if (!bookings.length) {
             throw new ApiError(
@@ -778,6 +761,7 @@ const getSelectedFlightBookingUrl =
             );
         }
 
+        // 2. Provider's secondary token
         const providerToken =
             bookings[0]?.token;
 
@@ -788,11 +772,12 @@ const getSelectedFlightBookingUrl =
             );
         }
 
+        // 3. Secondary token -> booking URL
         return await googleFlightsProvider
             .getBookingUrl(
                 providerToken
             );
-};
+    };
 
 export const flightOfferService = {
     searchAndSaveFlightOffers,

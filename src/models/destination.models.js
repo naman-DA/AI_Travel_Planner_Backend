@@ -122,6 +122,22 @@ const destinationSchema = new Schema(
     },
 
     // Geo Location
+    
+    geoapifyPlaceId: {
+        type: String,
+        trim: true,
+    },
+
+    countryCode: {
+        type: String,
+        trim: true,
+        uppercase: true,
+    },
+
+    placeType: {
+        type: String,
+        trim: true,
+    },
 
     location: {
       type: {
@@ -243,6 +259,13 @@ const destinationSchema = new Schema(
     },
 
     // Travel Information
+
+    primaryAirportIata: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: null,
+    },
 
     visaRequired: {
       type: Boolean,
@@ -405,6 +428,10 @@ destinationSchema.index({
 destinationSchema.index({
   destinationType: 1,
   averageRating: -1
+});
+
+destinationSchema.index({
+    geoapifyPlaceId: 1,
 });
 
 destinationSchema.set("toJSON", {

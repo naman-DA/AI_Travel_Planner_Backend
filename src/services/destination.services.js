@@ -5,6 +5,10 @@ import {
     uploadOnCloudinary,
     deleteFromCloudinary
 } from "../utils/cloudinary.js";
+import {
+    geoapifyClient,
+    GEOAPIFY_API_KEY,
+} from "../config/geoapify.js";
 
 // Generate Slug
 
@@ -314,7 +318,7 @@ const getDestinationById = async (
 
 // Search Destinations
 
-const searchDestinations = async (
+const searchLocalDestinations = async (
     keyword
 ) => {
     if (!keyword) {
@@ -360,6 +364,116 @@ const searchDestinations = async (
     })
     .limit(20)
     .lean();
+};
+
+const saveExternalDestination = async ({
+    destinationData,
+}) => {
+    const {
+        geoapifyPlaceId,
+        name,
+        city,
+        state = "",
+        country,
+        countryCode = "",
+        placeType = "",
+        location,
+    } = destinationData;
+
+    if (!geoapifyPlaceId) {
+        throw new ApiError(
+            400,
+            "Geoapify place ID is required."
+        );
+    }
+
+    if (!name?.trim()) {
+        throw new ApiError(
+            400,
+            "Destination name is required."
+        );
+    }
+
+    if (!country?.trim()) {
+        throw new ApiError(
+            400,
+            "Country is required."
+        );
+    }
+
+    if (
+        !location ||
+        !Array.isArray(location.coordinates) ||
+        location.coordinates.length !== 2
+    ) {
+        throw new ApiError(
+            400,
+            "Valid destination coordinates are required."
+        );
+    }
+
+    const existing =
+        await Destination.findOne({
+            geoapifyPlaceId,
+        });
+
+    if (existing) {
+        return existing;
+    }
+
+    const slug = generateSlug(
+        name,
+        city || name,
+        country
+    );
+
+    const destination =
+        await Destination.create({
+            name,
+            city: city || name,
+            state,
+            country,
+            countryCode:
+                countryCode.toUpperCase(),
+            placeType,
+            geoapifyPlaceId,
+            primaryAirportIata:
+                destinationData.primaryAirportIata ||
+                null,
+            location,
+            slug,
+            isActive: true,
+        });
+
+    return destination;
+};
+
+const searchDestinations = async (
+    keyword,
+    limit = 10
+) => {
+    const local =
+        await searchLocalDestinations(
+            keyword
+        );
+
+    if (local.length > 0) {
+        return {
+            source: "database",
+            results: local,
+        };
+    }
+
+    const external =
+        await searchExternalDestinations(
+            keyword,
+            limit
+        );
+
+    return {
+        source: "geoapify",
+        results: external,
+    };
 };
 
 // Filter Destinations
@@ -556,5 +670,6 @@ export const destinationService = {
     updateDestination,
     deleteDestination,
     searchDestinations,
-    filterDestinations
+    filterDestinations,
+    saveExternalDestination,
 };

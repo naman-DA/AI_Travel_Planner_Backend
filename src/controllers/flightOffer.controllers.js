@@ -1,3 +1,5 @@
+import { Destination } from "../models/destination.models.js";
+import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -77,6 +79,91 @@ const searchAndSaveFlightOffers =
         );
     });
 
+const searchFlightsByDestination =
+    asyncHandler(async (req, res) => {
+        const {
+            destinationId,
+            departureIata,
+            outboundDate,
+            adults = 1,
+            travelClass = "ECONOMY",
+            currency = "INR",
+            trip,
+        } = req.body;
+
+        if (!destinationId) {
+            throw new ApiError(
+                400,
+                "Destination ID is required."
+            );
+        }
+
+        if (!departureIata) {
+            throw new ApiError(
+                400,
+                "Departure IATA code is required."
+            );
+        }
+
+        if (!outboundDate) {
+            throw new ApiError(
+                400,
+                "Outbound date is required."
+            );
+        }
+
+        const destination =
+            await Destination.findOne({
+                _id: destinationId,
+                isActive: true,
+            }).select(
+                "name primaryAirportIata"
+            );
+
+        if (!destination) {
+            throw new ApiError(
+                404,
+                "Destination not found."
+            );
+        }
+
+        if (!destination.primaryAirportIata) {
+            throw new ApiError(
+                400,
+                "Primary airport is not configured for this destination."
+            );
+        }
+
+        const result =
+            await flightOfferService
+                .searchAndSaveFlightOffers({
+                    user: req.user._id,
+                    trip,
+                    departureIata,
+                    arrivalIata:
+                        destination.primaryAirportIata,
+                    outboundDate,
+                    adults,
+                    travelClass,
+                    currency,
+                });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    destination: {
+                        id: destination._id,
+                        name: destination.name,
+                        airport:
+                            destination.primaryAirportIata,
+                    },
+                    ...result,
+                },
+                "Flights fetched successfully."
+            )
+        );
+    });
 
 /**
  * Get one flight offer
@@ -196,11 +283,11 @@ const getSelectedFlightBookingUrl =
         );
     });
 
-
 export {
     searchAndSaveFlightOffers,
     getFlightOfferById,
     selectFlightOffer,
     getSelectedFlightBookingDetails,
     getSelectedFlightBookingUrl,
+    searchFlightsByDestination,
 };

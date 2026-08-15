@@ -220,31 +220,10 @@ const searchFlights = async ({
                 },
         };
 
-        console.log(
-            "FLIGHT CACHE KEY:",
-            cacheKey
-        );
-
-        const cacheSaved =
-            await cacheService.set(
-                cacheKey,
-                result,
-                CACHE_TTL_SECONDS
-            );
-
-        console.log(
-            "FLIGHT CACHE SAVED:",
-            cacheSaved
-        );
-
-        const verifyCache =
-            await cacheService.get(cacheKey);
-
-        console.log(
-            "FLIGHT CACHE VERIFY:",
-            verifyCache
-                ? "FOUND"
-                : "NOT FOUND"
+        await cacheService.set(
+            cacheKey,
+            result,
+            CACHE_TTL_SECONDS
         );
         
         return {

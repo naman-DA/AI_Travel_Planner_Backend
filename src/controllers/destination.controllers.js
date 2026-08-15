@@ -198,8 +198,29 @@ const deleteDestination = asyncHandler(async (req, res) => {
 
 // Search Destinations
 
+const saveExternalDestination =
+    asyncHandler(async (req, res) => {
+        const destination =
+            await destinationService
+                .saveExternalDestination({
+                    destinationData:
+                        req.body,
+                });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                destination,
+                "Destination selected successfully."
+            )
+        );
+});
+
 const searchDestinations = asyncHandler(async (req, res) => {
-    const { keyword } = req.query;
+    const {
+        keyword,
+        limit = 10,
+    } = req.query;
 
     if (!keyword) {
         throw new ApiError(
@@ -209,7 +230,10 @@ const searchDestinations = asyncHandler(async (req, res) => {
     }
 
     const destinations =
-        await destinationService.searchDestinations(keyword);
+        await destinationService.searchDestinations(
+            keyword,
+            limit
+        );
 
     return res.status(200).json(
         new ApiResponse(
@@ -243,4 +267,5 @@ export {
     deleteDestination,
     searchDestinations,
     filterDestinations,
+    saveExternalDestination,
 };
