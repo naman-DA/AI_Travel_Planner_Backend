@@ -15,6 +15,7 @@ import reviewRouter from "./routes/review.routes.js";
 import wishlistRouter from "./routes/wishlist.routes.js";
 import cancellationRouter from "./routes/cancellation.routes.js";
 import travelerRouter from "./routes/traveler.routes.js";
+import flightOfferRoutes from "./routes/flightOffer.routes.js";
 import { errorHandler } from "./middlewares/error.middlewares.js";
 
 const app = express();
@@ -72,6 +73,8 @@ app.use("/api/v1/wishlist", wishlistRouter);
 app.use("/api/v1/cancellations", cancellationRouter);
 
 app.use("/api/v1/travelers", travelerRouter);
+
+app.use("/api/v1/flight-offers", flightOfferRoutes);
 
 app.use(errorHandler);
 

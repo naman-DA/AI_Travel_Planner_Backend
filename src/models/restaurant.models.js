@@ -85,7 +85,6 @@ const restaurantSchema = new Schema(
             type: Schema.Types.ObjectId,
             ref: "Destination",
             required: true,
-            index: true,
         },
 
         // Address

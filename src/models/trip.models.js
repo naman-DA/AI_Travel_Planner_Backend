@@ -263,14 +263,12 @@ const tripSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     
     destination: {
       type: Schema.Types.ObjectId,
       ref: "Destination",
       required: true,
-      index: true,
     },
 
     hotel: {

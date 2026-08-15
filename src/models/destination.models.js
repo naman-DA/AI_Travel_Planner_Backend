@@ -57,7 +57,6 @@ const destinationSchema = new Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      index: true
     },
 
     // Description
@@ -384,10 +383,6 @@ const destinationSchema = new Schema(
 );
 
 // Indexes
-
-destinationSchema.index({
-    slug: 1
-});
 
 destinationSchema.index({
     averageRating: -1
