@@ -10,196 +10,316 @@ import {
 
 // Create Booking
 
-const createBooking = asyncHandler(async (req, res) => {
-    const bookingData = {
-        ...req.body,
-        user: req.user._id,
-    };
+const createBooking = asyncHandler(
+    async (req, res) => {
+        const bookingData = {
+            ...req.body,
+            user:
+                req.user._id,
+        };
 
-    validateCreateBooking(
-        bookingData
-    );
-
-    const booking =
-        await bookingService.createBooking(
+        validateCreateBooking(
             bookingData
         );
 
-    return res.status(201).json(
-        new ApiResponse(
-            201,
-            booking,
-            "Booking created successfully."
-        )
-    );
-});
+        const booking =
+            await bookingService.createBooking(
+                bookingData
+            );
+
+        return res.status(201).json(
+            new ApiResponse(
+                201,
+                booking,
+                "Booking created successfully."
+            )
+        );
+    }
+);
 
 // Get All Bookings
 
-const getAllBookings = asyncHandler(async (req, res) => {
-    const bookings =
-        await bookingService.getAllBookings({
-            page: req.query.page,
-            limit: req.query.limit,
-            user: req.user._id,
-        });
+const getAllBookings = asyncHandler(
+    async (req, res) => {
+        const bookings =
+            await bookingService.getAllBookings({
+                page:
+                    req.query.page,
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            bookings,
-            "Bookings fetched successfully."
-        )
-    );
-});
+                limit:
+                    req.query.limit,
+
+                user:
+                    req.user._id,
+            });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                bookings,
+                "Bookings fetched successfully."
+            )
+        );
+    }
+);
 
 // Get Booking By ID
 
-const getBookingById = asyncHandler(async (req, res) => {
-    const { bookingId } =
-        req.params;
-
-    validateBookingId(
-        bookingId
-    );
-
-    const booking =
-        await bookingService.getBookingById({
+const getBookingById = asyncHandler(
+    async (req, res) => {
+        const {
             bookingId,
-            user: req.user._id,
-    });    
+        } = req.params;
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            booking,
-            "Booking fetched successfully."
-        )
-    );
-});
+        validateBookingId(
+            bookingId
+        );
+
+        const booking =
+            await bookingService.getBookingById({
+                bookingId,
+                user:
+                    req.user._id,
+            });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                booking,
+                "Booking fetched successfully."
+            )
+        );
+    }
+);
 
 // Search Bookings
 
-const searchBookings = asyncHandler(async (req, res) => {
-    const bookings =
-        await bookingService.searchBookings(
-            req.query.keyword,
-            req.user._id
-        );
+const searchBookings = asyncHandler(
+    async (req, res) => {
+        const bookings =
+            await bookingService.searchBookings(
+                req.query.keyword,
+                req.user._id
+            );
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            bookings,
-            "Search completed successfully."
-        )
-    );
-});
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                bookings,
+                "Search completed successfully."
+            )
+        );
+    }
+);
 
 // Filter Bookings
 
-const filterBookings = asyncHandler(async (req, res) => {
-    const bookings =
-        await bookingService.filterBookings({
-            ...req.query,
-            user: req.user._id,
-        });
+const filterBookings = asyncHandler(
+    async (req, res) => {
+        const bookings =
+            await bookingService.filterBookings({
+                user:
+                    req.user._id,
+                status:
+                    req.query.status,
+                type:
+                    req.query.type,
+                provider:
+                    req.query.provider,
+                bookingMode:
+                    req.query.bookingMode,
+            });
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            bookings,
-            "Bookings filtered successfully."
-        )
-    );
-});
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                bookings,
+                "Bookings filtered successfully."
+            )
+        );
+    }
+);
 
 // Update Booking
 
-const updateBooking = asyncHandler(async (req, res) => {
-    const { bookingId } =
-        req.params;
-
-    validateBookingId(
-        bookingId
-    );
-
-    validateUpdateBooking(
-        req.body
-    );
-
-    const booking =
-        await bookingService.updateBooking({
+const updateBooking = asyncHandler(
+    async (req, res) => {
+        const {
             bookingId,
-            user: req.user._id,
-            bookingData:
-                req.body,
-        });
+        } = req.params;
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            booking,
-            "Booking updated successfully."
-        )
+        validateBookingId(
+            bookingId
+        );
+
+        validateUpdateBooking(
+            req.body
+        );
+
+        const booking =
+            await bookingService.updateBooking({
+                bookingId,
+                user:
+                    req.user._id,
+                bookingData:
+                    req.body,
+            });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                booking,
+                "Booking updated successfully."
+            )
+        );
+    }
+);
+
+// Initiate External Booking
+
+const initiateExternalBooking =
+    asyncHandler(
+        async (req, res) => {
+            const {
+                bookingId,
+            } = req.params;
+
+            validateBookingId(
+                bookingId
+            );
+
+            const booking =
+                await bookingService
+                    .initiateExternalBooking({
+                        bookingId,
+                        user:
+                            req.user._id,
+                    });
+
+            return res.status(200).json(
+                new ApiResponse(
+                    200,
+                    {
+                        bookingId:
+                            booking._id,
+
+                        provider:
+                            booking.provider,
+
+                        bookingMode:
+                            booking.bookingMode,
+
+                        status:
+                            booking.status,
+
+                        bookingUrl:
+                            booking.bookingUrl,
+
+                        redirectedAt:
+                            booking.redirectedAt,
+                    },
+                    "Booking redirect initialized successfully."
+                )
+            );
+        }
     );
-});
+
+// Confirm Booking
+
+const confirmBooking =
+    asyncHandler(
+        async (req, res) => {
+            const {
+                bookingId,
+            } = req.params;
+
+            validateBookingId(
+                bookingId
+            );
+
+            const booking =
+                await bookingService
+                    .confirmBooking({
+                        bookingId,
+                        user:
+                            req.user._id,
+                        providerBookingId:
+                            req.body
+                                .providerBookingId,
+                    });
+
+            return res.status(200).json(
+                new ApiResponse(
+                    200,
+                    booking,
+                    "Booking confirmed successfully."
+                )
+            );
+        }
+    );
 
 // Cancel Booking
 
-const cancelBooking = asyncHandler(async (req, res) => {
-    const { bookingId } =
-        req.params;
-
-    validateBookingId(
-        bookingId
-    );
-
-    validateCancelBooking(
-        req.body.cancellationReason
-    );
-
-    const booking =
-        await bookingService.cancelBooking({
+const cancelBooking = asyncHandler(
+    async (req, res) => {
+        const {
             bookingId,
-            user: req.user._id,
-            cancellationReason:
-                req.body
-                    .cancellationReason,
-        });
+        } = req.params;
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            booking,
-            "Booking cancelled successfully."
-        )
-    );
-});
+        validateBookingId(
+            bookingId
+        );
+
+        validateCancelBooking(
+            req.body.cancellationReason
+        );
+
+        const booking =
+            await bookingService.cancelBooking({
+                bookingId,
+                user:
+                    req.user._id,
+            });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                booking,
+                "Booking cancelled successfully."
+            )
+        );
+    }
+);
 
 // Delete Booking
 
-const deleteBooking = asyncHandler(async (req, res) => {
-    const { bookingId } =
-        req.params;
+const deleteBooking = asyncHandler(
+    async (req, res) => {
+        const {
+            bookingId,
+        } = req.params;
 
-    validateBookingId(
-        bookingId
-    );
+        validateBookingId(
+            bookingId
+        );
 
-    await bookingService.deleteBooking({
-        bookingId,
-        user: req.user._id,
-    });
+        await bookingService.deleteBooking({
+            bookingId,
+            user:
+                req.user._id,
+        });
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            {},
-            "Booking deleted successfully."
-        )
-    );
-});
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {},
+                "Booking deleted successfully."
+            )
+        );
+    }
+);
+
+// Export
 
 export {
     createBooking,
@@ -208,6 +328,8 @@ export {
     searchBookings,
     filterBookings,
     updateBooking,
+    initiateExternalBooking,
+    confirmBooking,
     cancelBooking,
     deleteBooking,
 };

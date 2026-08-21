@@ -123,6 +123,88 @@ const searchHotels = asyncHandler(async (req, res) => {
     );
 });
 
+const searchExternalHotels =
+    asyncHandler(async (req, res) => {
+        const {
+            destinationId,
+            checkIn,
+            checkOut,
+            adults = 2,
+            limit = 10,
+        } = req.query;
+
+        if (!destinationId) {
+            throw new ApiError(
+                400,
+                "Destination ID is required."
+            );
+        }
+
+        if (!checkIn || !checkOut) {
+            throw new ApiError(
+                400,
+                "Check-in and check-out dates are required."
+            );
+        }
+
+        const hotels =
+            await hotelService.searchExternalHotels({
+                destinationId,
+                checkIn,
+                checkOut,
+                adults,
+                limit,
+            });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                hotels,
+                "Hotels fetched successfully from external API."
+            )
+        );
+});
+
+const saveExternalHotel =
+    asyncHandler(async (req, res) => {
+        const hotel =
+            await hotelService.saveExternalHotel({
+                hotelData: req.body,
+            });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                hotel,
+                "Hotel selected successfully."
+            )
+        );
+});
+
+// Get Hotel Booking URL
+
+const getHotelBookingUrl =
+    asyncHandler(async (req, res) => {
+
+        const {
+            hotelId,
+        } = req.params;
+
+        const booking =
+            await hotelService
+                .getHotelBookingUrl({
+                    hotelId,
+                });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                booking,
+                "Hotel booking URL fetched successfully."
+            )
+        );
+});
+
 // Filter Hotels
 
 const filterHotels = asyncHandler(async (req, res) => {
@@ -227,6 +309,9 @@ export {
     getAllHotels,
     getHotelById,
     searchHotels,
+    searchExternalHotels,
+    saveExternalHotel,
+    getHotelBookingUrl,
     filterHotels,
     updateHotel,
     deleteHotel,

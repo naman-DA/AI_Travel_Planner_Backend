@@ -151,6 +151,30 @@ const hotelSchema = new Schema(
             default: "Hotel",
         },
 
+        externalProvider: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+
+        externalHotelId: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+
+        externalListingId: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+
+        bookingUrl: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+
         starRating: {
             type: Number,
             min: 1,
@@ -162,7 +186,7 @@ const hotelSchema = new Schema(
             type: Number,
             default: 0,
             min: 0,
-            max: 5,
+            max: 10,
         },
 
         reviewCount: {
@@ -324,6 +348,16 @@ hotelSchema.index({
 
 hotelSchema.index({
     popularityScore: -1,
+});
+
+hotelSchema.index({
+    externalProvider: 1,
+    externalHotelId: 1,
+});
+
+hotelSchema.index({
+    externalProvider: 1,
+    externalListingId: 1,
 });
 
 // Remove __v

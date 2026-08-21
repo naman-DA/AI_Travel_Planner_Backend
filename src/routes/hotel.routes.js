@@ -6,6 +6,9 @@ import {
     updateHotel,
     deleteHotel,
     searchHotels,
+    searchExternalHotels,
+    saveExternalHotel,
+    getHotelBookingUrl,
     filterHotels,
 } from "../controllers/hotel.controllers.js";
 
@@ -28,8 +31,26 @@ router.get(
 );
 
 router.get(
+    "/search-external",
+    searchExternalHotels
+);
+
+router.get(
     "/filter",
     filterHotels
+);
+
+router.post(
+    "/select",
+    verifyJWT,
+    saveExternalHotel
+);
+
+// Dynamic route MUST come after all fixed routes
+
+router.get(
+    "/:hotelId/booking-url",
+    getHotelBookingUrl
 );
 
 router.get(
