@@ -160,6 +160,30 @@ const activitySchema = new Schema(
             default: 20,
         },
 
+        externalProvider: {
+            type: String,
+            default: null,
+            trim: true,
+        },
+
+        externalActivityId: {
+            type: String,
+            default: null,
+            trim: true,
+        },
+
+        externalListingId: {
+            type: String,
+            default: null,
+            trim: true,
+        },
+
+        bookingUrl: {
+            type: String,
+            default: null,
+            trim: true,
+        },
+        
         // Schedule
 
         schedule: [

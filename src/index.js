@@ -15,11 +15,15 @@ connectDB()
                 "✅ Email transporter verified."
             );
 
-            app.listen(PORT, () => {
-                console.log(
-                    `Server running on ${PORT}`
-                );
-            });
+            app.listen(
+                PORT,
+                "0.0.0.0",
+                () => {
+                    console.log(
+                        `Server running on ${PORT}`
+                    );
+                }
+            );
         } catch (error) {
             console.error(
                 "❌ Startup dependency failed:",

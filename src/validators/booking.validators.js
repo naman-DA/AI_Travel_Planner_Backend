@@ -81,6 +81,7 @@ const validateCreateBooking = (data) => {
         ![
             "Flight",
             "Hotel",
+            "Restaurant",
             "Activity",
         ].includes(type)
     ) {
@@ -121,8 +122,9 @@ const validateCreateBooking = (data) => {
 
     if (
         ![
-            "Flight",
+            "FlightOffer",
             "Hotel",
+            "Restaurant",
             "Activity",
         ].includes(itemModel)
     ) {
@@ -134,10 +136,20 @@ const validateCreateBooking = (data) => {
 
     // Type and Item Model must match
 
-    if (type !== itemModel) {
+    const validTypeModelPairs = {
+        Flight: "FlightOffer",
+        Hotel: "Hotel",
+        Restaurant: "Restaurant",
+        Activity: "Activity",
+    };
+
+    if (
+        validTypeModelPairs[type] !==
+        itemModel
+    ) {
         throw new ApiError(
             400,
-            "Booking type and item model must match."
+            "Booking type and item model do not match."
         );
     }
 
@@ -375,6 +387,7 @@ const validateUpdateBooking = (data) => {
         ![
             "Flight",
             "Hotel",
+            "Restauurant",
             "Activity",
         ].includes(data.type)
     ) {
@@ -403,8 +416,9 @@ const validateUpdateBooking = (data) => {
     if (
         data.itemModel &&
         ![
-            "Flight",
+            "FlightOffer",
             "Hotel",
+            "Restaurant",
             "Activity",
         ].includes(
             data.itemModel
@@ -418,15 +432,22 @@ const validateUpdateBooking = (data) => {
 
     // Type and Item Model
 
+    const validTypeModelPairs = {
+        Flight: "FlightOffer",
+        Hotel: "Hotel",
+        Restaurant: "Restaurant",
+        Activity: "Activity",
+    };
+
     if (
         data.type &&
         data.itemModel &&
-        data.type !==
+        validTypeModelPairs[data.type] !==
             data.itemModel
     ) {
         throw new ApiError(
             400,
-            "Booking type and item model must match."
+            "Booking type and item model do not match."
         );
     }
 
@@ -572,6 +593,7 @@ const validateUpdateBooking = (data) => {
             "Selected",
             "BookingInitiated",
             "Redirected",
+            "Unknown",
             "Confirmed",
             "Cancelled",
             "Failed",

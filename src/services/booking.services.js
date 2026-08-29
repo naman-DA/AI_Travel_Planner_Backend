@@ -3,6 +3,8 @@ import { User } from "../models/user.models.js";
 import { Trip } from "../models/trip.models.js";
 import { Hotel } from "../models/hotel.models.js";
 import { Activity } from "../models/activity.models.js";
+import { Restaurant } from "../models/restaurant.models.js";
+import { FlightOffer } from "../models/flightOffer.models.js";
 import { Traveler } from "../models/traveler.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { generateBookingReference } from "../utils/generateBookingReference.js";
@@ -106,26 +108,85 @@ const validateReferences = async (
         }
     }
 
-    // Flight
+    // Restaurant
 
     if (
         bookingData.itemModel ===
-        "Flight"
+        "Restaurant"
     ) {
-        // Your current Trip model stores
-        // selectedFlight as an embedded object
-        // rather than a Flight document.
+        const restaurant =
+            await Restaurant.findById(
+                bookingData.item
+            );
 
-        if (
-            !trip.selectedFlight
-        ) {
+        if (!restaurant) {
             throw new ApiError(
                 404,
-                "Selected flight not found in trip."
+                "Restaurant not found."
+            );
+        }
+
+        if (
+            restaurant.isActive === false
+        ) {
+            throw new ApiError(
+                400,
+                "Restaurant is not active."
             );
         }
     }
-};
+
+    // Flight
+
+    // Flight Offer
+
+    if (
+        bookingData.itemModel ===
+        "FlightOffer"
+    ) {
+        const flightOffer =
+            await FlightOffer.findById(
+                bookingData.item
+            );
+
+        if (!flightOffer) {
+            throw new ApiError(
+                404,
+                "Flight offer not found."
+            );
+        }
+
+        if (
+            flightOffer.user.toString() !==
+            bookingData.user.toString()
+        ) {
+            throw new ApiError(
+                403,
+                "You are not authorized to book this flight offer."
+            );
+        }
+
+        if (
+            flightOffer.isActive === false
+        ) {
+            throw new ApiError(
+                410,
+                "Flight offer is no longer active."
+            );
+        }
+
+        if (
+            flightOffer.expiresAt &&
+            flightOffer.expiresAt <=
+                new Date()
+        ) {
+            throw new ApiError(
+                410,
+                "Flight offer has expired."
+            );
+        }
+    }
+}
 
 // Create Passenger Snapshots
 
@@ -239,6 +300,103 @@ const createBooking = async (
         bookingData
     );
 
+    const itemModel = bookingData.itemModel;
+
+    let provider = bookingData.provider;
+    let externalItemId = bookingData.externalItemId;
+    let bookingUrl = bookingData.bookingUrl;
+
+    if (itemModel === "FlightOffer") {
+        const flightOffer =
+            await FlightOffer.findById(
+                bookingData.item
+            ).select(
+                "+bookingToken"
+            );
+
+        if (!flightOffer) {
+            throw new ApiError(
+                404,
+                "Flight offer not found."
+            );
+        }
+
+        provider =
+            provider ||
+            "GoogleFlights";
+
+        externalItemId =
+            externalItemId ||
+            flightOffer._id.toString();
+    }
+
+    if (itemModel === "Hotel") {
+        const hotel =
+            await Hotel.findById(
+                bookingData.item
+            );
+
+        if (!hotel) {
+            throw new ApiError(
+                404,
+                "Hotel not found."
+            );
+        }
+
+        provider =
+            provider ||
+            hotel.externalProvider ||
+            "";
+
+        externalItemId =
+            externalItemId ||
+            hotel.externalHotelId ||
+            "";
+
+        bookingUrl =
+            bookingUrl ||
+            hotel.bookingUrl ||
+            "";
+    }
+
+    if (itemModel === "Restaurant") {
+        const restaurant =
+            await Restaurant.findById(
+                bookingData.item
+            );
+
+        if (!restaurant) {
+            throw new ApiError(
+                404,
+                "Restaurant not found."
+            );
+        }
+    }
+
+    if (itemModel === "Activity") {
+        const activity =
+            await Activity.findById(
+                bookingData.item
+            );
+
+        if (!activity) {
+            throw new ApiError(
+                404,
+                "Activity not found."
+            );
+        }
+
+        provider =
+            provider ||
+            activity.externalProvider ||
+            "";
+
+        externalItemId =
+            externalItemId ||
+            activity.externalActivityId ||
+            "";
+    }
+
     // Create traveler snapshots
     // only when travelerIds are supplied
 
@@ -274,11 +432,9 @@ const createBooking = async (
     } = bookingData;
 
     // IMPORTANT:
-    //
-    // The current Booking model does NOT
-    // have "bookingReference" or
-    // "passengers".
-    //
+    // The Booking model does not store
+    // travelerIds or passengers directly.
+    // Passenger snapshots are stored in metadata.
     // Therefore we do not spread
     // those old fields into Booking.
 
@@ -286,16 +442,17 @@ const createBooking = async (
         await Booking.create({
             ...bookingFields,
 
-            // Convert passenger snapshots
-            // into metadata because the current
-            // model has travelers/guestDetails,
-            // not passengers.
+            provider,
+
+            externalItemId,
+
+            bookingUrl,
+
+            bookingReference,
 
             metadata: {
                 ...(bookingFields.metadata || {}),
-
-                passengerSnapshots:
-                    passengers,
+                passengerSnapshots: passengers,
             },
 
             status:
@@ -637,6 +794,16 @@ const confirmBooking = async ({
         throw new ApiError(
             404,
             "Booking not found."
+        );
+    }
+
+    if (
+        booking.bookingMode ===
+        "ExternalRedirect"
+    ) {
+        throw new ApiError(
+            403,
+            "External redirect bookings must be confirmed by the provider."
         );
     }
 
