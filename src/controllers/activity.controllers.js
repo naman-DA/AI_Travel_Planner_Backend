@@ -1,4 +1,5 @@
 import { activityService } from "../services/activity.services.js";
+import { ApiError } from "../utils/ApiError.js";
 import {
     validateCreateActivity,
     validateUpdateActivity,
