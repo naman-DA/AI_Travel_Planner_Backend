@@ -26,14 +26,18 @@ const uploadOnCloudinary = async(localFilePath, folder= "ai-travel-planner") =>
     return response;
   }
 
-  catch(error){
-    // Delete local file if upload fails
+  catch (error) {
+    console.error("CLOUDINARY ERROR:", error);
+    console.error("CLOUDINARY RESPONSE:", error?.error);
 
-    if(localFilePath && fs.existsSync(localFilePath)){
-      fs.unlinkSync(localFilePath);
+    if (localFilePath && fs.existsSync(localFilePath)) {
+        fs.unlinkSync(localFilePath);
     }
 
-    throw new ApiError(500, "Failed to upload file to Cloudinary");
+    throw new ApiError(
+        500,
+        error?.message || "Failed to upload file to Cloudinary"
+    );
   }
 };
 
