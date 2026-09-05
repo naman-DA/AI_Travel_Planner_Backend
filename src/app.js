@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+
 import authRouter from "./routes/auth.routes.js";
 import destinationRouter from "./routes/destination.routes.js";
 import hotelRouter from "./routes/hotel.routes.js";
@@ -16,12 +17,13 @@ import wishlistRouter from "./routes/wishlist.routes.js";
 import cancellationRouter from "./routes/cancellation.routes.js";
 import travelerRouter from "./routes/traveler.routes.js";
 import flightOfferRoutes from "./routes/flightOffer.routes.js";
+import weatherRouter from "./routes/weather.routes.js";
+
 import { errorHandler } from "./middlewares/error.middlewares.js";
 
 const app = express();
 
 // Middlewares
-
 app.use(
     cors({
         origin: process.env.CLIENT_URL || "*",
@@ -29,11 +31,7 @@ app.use(
     })
 );
 
-app.use(
-    express.json({
-        limit: "20kb",
-    })
-);
+app.use(express.json({ limit: "20kb" }));
 
 app.use(
     express.urlencoded({
@@ -43,43 +41,30 @@ app.use(
 );
 
 app.use(express.static("public"));
-
 app.use(cookieParser());
-
 app.use(morgan("dev"));
 
+// Routes
 app.use("/api/v1/auth", authRouter);
-
 app.use("/api/v1/destinations", destinationRouter);
-
 app.use("/api/v1/hotels", hotelRouter);
-
 app.use("/api/v1/restaurants", restaurantRouter);
-
 app.use("/api/v1/activities", activityRouter);
-
 app.use("/api/v1/trips", tripRouter);
-
 app.use("/api/v1/bookings", bookingRouter);
-
 app.use("/api/v1/payments", paymentRouter);
-
 app.use("/api/v1/notifications", notificationRouter);
-
 app.use("/api/v1/reviews", reviewRouter);
-
 app.use("/api/v1/wishlist", wishlistRouter);
-
 app.use("/api/v1/cancellations", cancellationRouter);
-
 app.use("/api/v1/travelers", travelerRouter);
-
 app.use("/api/v1/flight-offers", flightOfferRoutes);
+app.use("/api/v1/weather", weatherRouter);
 
+// Error Handler
 app.use(errorHandler);
 
-// Health Check Route
-
+// Health Check
 app.get("/", (req, res) => {
     res.status(200).json({
         success: true,

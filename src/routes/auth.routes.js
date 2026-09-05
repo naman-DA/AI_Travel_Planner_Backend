@@ -34,6 +34,8 @@ router.post(
     verifyOTP
 );
 
+router.post("/resend-otp", resendOTP);
+
 router.post("/login", loginUser);
 
 router.post(
