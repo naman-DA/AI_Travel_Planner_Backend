@@ -18,7 +18,7 @@ import cancellationRouter from "./routes/cancellation.routes.js";
 import travelerRouter from "./routes/traveler.routes.js";
 import flightOfferRoutes from "./routes/flightOffer.routes.js";
 import weatherRouter from "./routes/weather.routes.js";
-import imageRouter from "./routes/image.routes.js";
+import googlePlacesRouter from "./routes/googlePlaces.routes.js";
 import { errorHandler } from "./middlewares/error.middlewares.js";
 
 const app = express();
@@ -60,7 +60,7 @@ app.use("/api/v1/cancellations", cancellationRouter);
 app.use("/api/v1/travelers", travelerRouter);
 app.use("/api/v1/flight-offers", flightOfferRoutes);
 app.use("/api/v1/weather", weatherRouter);
-app.use("/api/v1/images", imageRouter);
+app.use("/api/v1/google-places", googlePlacesRouter);
 
 // Error Handler
 app.use(errorHandler);
