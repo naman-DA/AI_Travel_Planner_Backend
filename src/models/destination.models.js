@@ -48,8 +48,9 @@ const destinationSchema = new Schema(
 
     destinationCode: {
       type: String,
-      unique: true,
+      trim: true,
       uppercase: true,
+      sparse: true,
     },
 
     slug: {
@@ -406,6 +407,11 @@ const destinationSchema = new Schema(
 );
 
 // Indexes
+
+destinationSchema.index(
+    { destinationCode: 1 },
+    { unique: true, sparse: true }
+);
 
 destinationSchema.index({
     averageRating: -1
