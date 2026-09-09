@@ -1,16 +1,16 @@
 import slugify from "slugify";
 import { Destination } from "../models/destination.models.js";
 import { ApiError } from "../utils/ApiError.js";
+
 import {
     uploadOnCloudinary,
-    deleteFromCloudinary
+    deleteFromCloudinary,
 } from "../utils/cloudinary.js";
+
 import {
     geoapifyClient,
     GEOAPIFY_API_KEY,
 } from "../config/geoapify.js";
-
-// Generate Slug
 
 const generateSlug = (name, city, country) => {
     return slugify(`${name}-${city}-${country}`, {
@@ -19,8 +19,6 @@ const generateSlug = (name, city, country) => {
         trim: true,
     });
 };
-
-// Upload Gallery Images
 
 const uploadGalleryImages = async (files = []) => {
     const uploadedImages = [];
@@ -32,7 +30,10 @@ const uploadGalleryImages = async (files = []) => {
         );
 
         if (!response) {
-            throw new ApiError(500, "Failed to upload destination image.");
+            throw new ApiError(
+                500,
+                "Failed to upload destination image."
+            );
         }
 
         uploadedImages.push({
@@ -46,17 +47,15 @@ const uploadGalleryImages = async (files = []) => {
     return uploadedImages;
 };
 
-// Delete Destination Images
-
 const deleteGalleryImages = async (images = []) => {
     for (const image of images) {
         if (image.publicId) {
-            await deleteFromCloudinary(image.publicId);
+            await deleteFromCloudinary(
+                image.publicId
+            );
         }
     }
 };
-
-// Create Destination
 
 const createDestination = async ({
     destinationData,
@@ -64,78 +63,89 @@ const createDestination = async ({
     galleryImages = [],
 }) => {
 
-  // Generate slug
+    const slug = generateSlug(
+        destinationData.name,
+        destinationData.city,
+        destinationData.country
+    );
 
-  const slug = generateSlug(
-    destinationData.name,
-    destinationData.city,
-    destinationData.country
-  );
+    const existingDestination =
+        await Destination.findOne({ slug });
 
-  // Duplicate check
-  
-  const existingDestination = await Destination.findOne({ slug, });
-
-  if (existingDestination) {
-    throw new ApiError(409, "Destination already exists.");
-  }
-
-  let uploadedCoverImage = null;
-  let uploadedGalleryImages = [];
-
-  try {
-  //  Upload Cover
-    
-    if (coverImage) {
-        const response = await uploadOnCloudinary(
-          coverImage.path,
-          "ai-travel-planner/destinations/cover"
-      );
-
-      if (!response) {
-        throw new ApiError(500, "Failed to upload cover image.");
-      }
-
-      uploadedCoverImage = {
-        url: response.secure_url,
-        publicId: response.public_id,
-        caption: destinationData.name,
-      };
-    }
-    
-    // Upload Gallery
-    
-    if (galleryImages.length > 0) {
-      uploadedGalleryImages = await uploadGalleryImages(galleryImages);
+    if (existingDestination) {
+        throw new ApiError(
+            409,
+            "Destination already exists."
+        );
     }
 
-    //  Create Destination
+    let uploadedCoverImage = null;
+    let uploadedGalleryImages = [];
 
-    const destination = await Destination.create({
-      ...destinationData,
-      slug,
-      coverImage: uploadedCoverImage,
-      galleryImages: uploadedGalleryImages,
-    });
-        
-    return destination;
+    try {
 
-  } 
-    
-  catch (error) {
-    //  Rollback Cloudinary
+        // Upload Cover
 
-    if (uploadedCoverImage?.publicId) {
-      await deleteFromCloudinary(uploadedCoverImage.publicId); 
+        if (coverImage) {
+            const response = await uploadOnCloudinary(
+                coverImage.path,
+                "ai-travel-planner/destinations/cover"
+            );
+
+            if (!response) {
+                throw new ApiError(
+                    500,
+                    "Failed to upload cover image."
+                );
+            }
+
+            uploadedCoverImage = {
+                url: response.secure_url,
+                publicId: response.public_id,
+                caption: destinationData.name,
+            };
+        }
+
+
+        // Upload Gallery
+
+        if (galleryImages.length > 0) {
+            uploadedGalleryImages =
+                await uploadGalleryImages(
+                    galleryImages
+                );
+        }
+
+
+        // Create Destination
+
+        const destination =
+            await Destination.create({
+                ...destinationData,
+                slug,
+                coverImage: uploadedCoverImage,
+                galleryImages: uploadedGalleryImages,
+            });
+
+        return destination;
+
+    } catch (error) {
+
+        // Rollback Cloudinary
+
+        if (uploadedCoverImage?.publicId) {
+            await deleteFromCloudinary(
+                uploadedCoverImage.publicId
+            );
+        }
+
+        await deleteGalleryImages(
+            uploadedGalleryImages
+        );
+
+        throw error;
     }
-  
-    await deleteGalleryImages(uploadedGalleryImages);
-
-    throw error;
-  }
 };
-
-//  Get All Destinations
 
 const getAllDestinations = async ({
     page = 1,
@@ -148,14 +158,16 @@ const getAllDestinations = async ({
     travelStyle,
     minRating,
     isFeatured,
-    sort = "newest"
+    sort = "newest",
 }) => {
+
     page = Number(page);
     limit = Number(limit);
 
     const query = {
-        isActive: true
+        isActive: true,
     };
+
 
     // Search
 
@@ -164,29 +176,30 @@ const getAllDestinations = async ({
             {
                 name: {
                     $regex: search,
-                    $options: "i"
-                }
+                    $options: "i",
+                },
             },
             {
                 city: {
                     $regex: search,
-                    $options: "i"
-                }
+                    $options: "i",
+                },
             },
             {
                 state: {
                     $regex: search,
-                    $options: "i"
-                }
+                    $options: "i",
+                },
             },
             {
                 country: {
                     $regex: search,
-                    $options: "i"
-                }
-            }
+                    $options: "i",
+                },
+            },
         ];
     }
+
 
     // Filters
 
@@ -212,7 +225,7 @@ const getAllDestinations = async ({
 
     if (minRating) {
         query.averageRating = {
-            $gte: Number(minRating)
+            $gte: Number(minRating),
         };
     }
 
@@ -221,90 +234,87 @@ const getAllDestinations = async ({
             isFeatured === "true";
     }
 
+
     // Sorting
 
     let sortOption = {
-        createdAt: -1
+        createdAt: -1,
     };
 
     switch (sort) {
+
         case "rating":
             sortOption = {
-                averageRating: -1
+                averageRating: -1,
             };
-
             break;
 
         case "popularity":
             sortOption = {
-                popularityScore: -1
+                popularityScore: -1,
             };
-
             break;
 
         case "alphabetical":
             sortOption = {
-                name: 1
+                name: 1,
             };
-
             break;
 
         case "oldest":
             sortOption = {
-                createdAt: 1
+                createdAt: 1,
             };
-
             break;
 
         default:
             sortOption = {
-                createdAt: -1
+                createdAt: -1,
             };
     }
+
 
     const skip =
         (page - 1) * limit;
 
+
     const [destinations, total] =
         await Promise.all([
+
             Destination.find(query)
                 .select("-__v")
                 .sort(sortOption)
                 .skip(skip)
                 .limit(limit)
                 .lean(),
-                // .populate("hotels")
-                // .populate("restaurants")
-                // .populate("activities"),
 
-            Destination.countDocuments(query)
+            Destination.countDocuments(query),
         ]);
+
 
     return {
         destinations,
+
         pagination: {
             page,
             limit,
             total,
             totalPages:
-                Math.ceil(total / limit)
-        }
+                Math.ceil(total / limit),
+        },
     };
 };
-
-// Get Destination By ID
 
 const getDestinationById = async (
     destinationId
 ) => {
+
     const destination =
-        await Destination.findById(destinationId)
-        .select("-__v")
-        .lean();
-            // .populate("hotels")
-            // .populate("restaurants")
-            // .populate("activities")
-            // .populate("reviews");
+        await Destination.findById(
+            destinationId
+        )
+            .select("-__v")
+            .lean();
 
     if (!destination) {
         throw new ApiError(
@@ -316,59 +326,226 @@ const getDestinationById = async (
     return destination;
 };
 
-// Search Destinations
-
 const searchLocalDestinations = async (
     keyword
 ) => {
+
     if (!keyword) {
         return [];
     }
 
     return await Destination.find({
         isActive: true,
+
         $or: [
             {
                 name: {
                     $regex: keyword,
-                    $options: "i"
-                }
+                    $options: "i",
+                },
             },
+
             {
                 city: {
                     $regex: keyword,
-                    $options: "i"
-                }
+                    $options: "i",
+                },
             },
+
             {
                 country: {
                     $regex: keyword,
-                    $options: "i"
-                }
+                    $options: "i",
+                },
             },
+
             {
                 searchKeywords: {
                     $in: [
                         new RegExp(
                             keyword,
                             "i"
-                        )
-                    ]
+                        ),
+                    ],
+                },
+            },
+        ],
+    })
+        .select("-__v")
+        .sort({
+            popularityScore: -1,
+        })
+        .limit(20)
+        .lean();
+};
+
+const searchExternalDestinations = async (
+    keyword,
+    limit = 10
+) => {
+
+    if (!keyword?.trim()) {
+        return [];
+    }
+
+    try {
+
+        const response =
+            await geoapifyClient.get(
+                "/v1/geocode/search",
+                {
+                    params: {
+                        text: keyword.trim(),
+
+                        limit: Math.min(
+                            Number(limit) || 10,
+                            20
+                        ),
+
+                        lang: "en",
+
+                        apiKey:
+                            GEOAPIFY_API_KEY,
+                    },
                 }
-            }
-        ]
-    })
-    .select("-__v")
-    .sort({
-        popularityScore: -1
-    })
-    .limit(20)
-    .lean();
+            );
+
+
+        const features =
+            response.data?.features || [];
+
+
+        return features
+            .filter(
+                (feature) =>
+                    feature.geometry?.coordinates &&
+                    feature.geometry.coordinates.length === 2
+            )
+            .map((feature) => {
+
+                const properties =
+                    feature.properties || {};
+
+                const [
+                    longitude,
+                    latitude,
+                ] =
+                    feature.geometry.coordinates;
+
+
+                return {
+
+                    geoapifyPlaceId:
+                        properties.place_id ||
+                        null,
+
+                    name:
+                        properties.name ||
+                        properties.city ||
+                        properties.town ||
+                        properties.village ||
+                        properties.formatted ||
+                        keyword,
+
+                    city:
+                        properties.city ||
+                        properties.town ||
+                        properties.village ||
+                        "",
+
+                    state:
+                        properties.state ||
+                        "",
+
+                    country:
+                        properties.country ||
+                        "",
+
+                    countryCode:
+                        properties.country_code
+                            ? properties.country_code.toUpperCase()
+                            : "",
+
+                    placeType:
+                        properties.place_type ||
+                        "",
+
+                    location: {
+                        type: "Point",
+
+                        coordinates: [
+                            longitude,
+                            latitude,
+                        ],
+                    },
+
+                    primaryAirportIata:
+                        null,
+
+                    formatted:
+                        properties.formatted ||
+                        "",
+                };
+            });
+
+    } catch (error) {
+
+        console.error(
+            "Geoapify destination search failed:",
+            error.response?.data ||
+            error.message
+        );
+
+        throw new ApiError(
+            502,
+            "Failed to search destinations using Geoapify."
+        );
+    }
+};
+
+const searchDestinations = async (
+    keyword,
+    limit = 10
+) => {
+
+    // First search MongoDB
+
+    const local =
+        await searchLocalDestinations(
+            keyword
+        );
+
+
+    // If found locally, return local results
+
+    if (local.length > 0) {
+
+        return {
+            source: "database",
+            results: local,
+        };
+    }
+
+
+    // Otherwise search Geoapify
+
+    const external =
+        await searchExternalDestinations(
+            keyword,
+            limit
+        );
+
+
+    return {
+        source: "geoapify",
+        results: external,
+    };
 };
 
 const saveExternalDestination = async ({
     destinationData,
 }) => {
+
     const {
         geoapifyPlaceId,
         name,
@@ -380,12 +557,14 @@ const saveExternalDestination = async ({
         location,
     } = destinationData;
 
+
     if (!geoapifyPlaceId) {
         throw new ApiError(
             400,
             "Geoapify place ID is required."
         );
     }
+
 
     if (!name?.trim()) {
         throw new ApiError(
@@ -394,6 +573,7 @@ const saveExternalDestination = async ({
         );
     }
 
+
     if (!country?.trim()) {
         throw new ApiError(
             400,
@@ -401,9 +581,12 @@ const saveExternalDestination = async ({
         );
     }
 
+
     if (
         !location ||
-        !Array.isArray(location.coordinates) ||
+        !Array.isArray(
+            location.coordinates
+        ) ||
         location.coordinates.length !== 2
     ) {
         throw new ApiError(
@@ -412,71 +595,61 @@ const saveExternalDestination = async ({
         );
     }
 
+
+    // Check duplicate
+
     const existing =
         await Destination.findOne({
             geoapifyPlaceId,
         });
 
+
     if (existing) {
         return existing;
     }
 
-    const slug = generateSlug(
-        name,
-        city || name,
-        country
-    );
+
+    const slug =
+        generateSlug(
+            name,
+            city || name,
+            country
+        );
+
 
     const destination =
         await Destination.create({
+
             name,
-            city: city || name,
+
+            city:
+                city || name,
+
             state,
+
             country,
+
             countryCode:
                 countryCode.toUpperCase(),
+
             placeType,
+
             geoapifyPlaceId,
+
             primaryAirportIata:
                 destinationData.primaryAirportIata ||
                 null,
+
             location,
+
             slug,
+
             isActive: true,
         });
 
+
     return destination;
 };
-
-const searchDestinations = async (
-    keyword,
-    limit = 10
-) => {
-    const local =
-        await searchLocalDestinations(
-            keyword
-        );
-
-    if (local.length > 0) {
-        return {
-            source: "database",
-            results: local,
-        };
-    }
-
-    const external =
-        await searchExternalDestinations(
-            keyword,
-            limit
-        );
-
-    return {
-        source: "geoapify",
-        results: external,
-    };
-};
-
-// Filter Destinations
 
 const filterDestinations = async ({
     country,
@@ -485,63 +658,80 @@ const filterDestinations = async ({
     suitableFor,
     minBudget,
     maxBudget,
-    minRating
+    minRating,
 }) => {
+
     const query = {
-        isActive: true
+        isActive: true,
     };
+
 
     if (country) {
         query.country = country;
     }
 
+
     if (destinationType) {
-        query.destinationType = destinationType;
+        query.destinationType =
+            destinationType;
     }
+
 
     if (travelStyle) {
-        query.travelStyles = travelStyle;
+        query.travelStyles =
+            travelStyle;
     }
 
+
     if (suitableFor) {
-        query.suitableFor = suitableFor;
+        query.suitableFor =
+            suitableFor;
     }
+
 
     if (
         minBudget ||
         maxBudget
     ) {
-        query["averageDailyBudget.budget"] = {};
+
+        query[
+            "averageDailyBudget.budget"
+        ] = {};
+
 
         if (minBudget) {
-            query["averageDailyBudget.budget"].$gte =
+            query[
+                "averageDailyBudget.budget"
+            ].$gte =
                 Number(minBudget);
         }
 
+
         if (maxBudget) {
-            query["averageDailyBudget.budget"].$lte =
+            query[
+                "averageDailyBudget.budget"
+            ].$lte =
                 Number(maxBudget);
         }
     }
 
+
     if (minRating) {
         query.averageRating = {
-            $gte: Number(minRating)
+            $gte: Number(minRating),
         };
     }
 
-    return await Destination.find(query)
+
+    return await Destination.find(
+        query
+    )
         .select("-__v")
         .sort({
-            popularityScore: -1
+            popularityScore: -1,
         })
         .lean();
-        // .populate("activities")
-        // .populate("hotels")
-        // .populate("restaurants");
 };
-
-// Update Destination
 
 const updateDestination = async ({
     destinationId,
@@ -549,26 +739,42 @@ const updateDestination = async ({
     coverImage,
     galleryImages = [],
 }) => {
-    const destination = await Destination.findById(destinationId);
+
+    const destination =
+        await Destination.findById(
+            destinationId
+        );
+
 
     if (!destination) {
-        throw new ApiError(404, "Destination not found.");
+        throw new ApiError(
+            404,
+            "Destination not found."
+        );
     }
 
+
     try {
+
         // Update Cover Image
 
         if (coverImage) {
-            if (destination.coverImage?.publicId) {
+
+            if (
+                destination.coverImage?.publicId
+            ) {
                 await deleteFromCloudinary(
                     destination.coverImage.publicId
                 );
             }
 
-            const uploadedCover = await uploadOnCloudinary(
-                coverImage.path,
-                "ai-travel-planner/destinations/cover"
-            );
+
+            const uploadedCover =
+                await uploadOnCloudinary(
+                    coverImage.path,
+                    "ai-travel-planner/destinations/cover"
+                );
+
 
             if (!uploadedCover) {
                 throw new ApiError(
@@ -577,21 +783,31 @@ const updateDestination = async ({
                 );
             }
 
+
             destination.coverImage = {
-                url: uploadedCover.secure_url,
-                publicId: uploadedCover.public_id,
+                url:
+                    uploadedCover.secure_url,
+
+                publicId:
+                    uploadedCover.public_id,
+
                 caption:
                     destinationData.name ||
                     destination.name,
             };
         }
 
+
         // Update Gallery Images
 
-        if (galleryImages.length > 0) {
+        if (
+            galleryImages.length > 0
+        ) {
+
             await deleteGalleryImages(
                 destination.galleryImages
             );
+
 
             destination.galleryImages =
                 await uploadGalleryImages(
@@ -599,9 +815,13 @@ const updateDestination = async ({
                 );
         }
 
+
         // Update Remaining Fields
 
-        Object.entries(destinationData).forEach(([key, value]) => {
+        Object.entries(
+            destinationData
+        ).forEach(([key, value]) => {
+
             if (
                 value !== undefined &&
                 value !== null &&
@@ -611,52 +831,76 @@ const updateDestination = async ({
             }
         });
 
+
+        // Regenerate slug
+
         if (
             destinationData.name ||
             destinationData.city
         ) {
-            destination.slug = generateSlug(
-                destinationData.name || destination.name,
-                destinationData.city || destination.city,
-                destinationData.country || destination.country
-            );
+
+            destination.slug =
+                generateSlug(
+
+                    destinationData.name ||
+                        destination.name,
+
+                    destinationData.city ||
+                        destination.city,
+
+                    destinationData.country ||
+                        destination.country
+                );
         }
+
 
         await destination.save();
 
         return destination;
-    } 
-    catch (error) {
+
+    } catch (error) {
+
         throw error;
     }
 };
 
-// Delete Destination
+const deleteDestination = async (
+    destinationId
+) => {
 
-const deleteDestination = async (destinationId) => {
-    const destination = await Destination.findById(
-        destinationId
-    );
+    const destination =
+        await Destination.findById(
+            destinationId
+        );
+
 
     if (!destination) {
-        throw new ApiError(404, "Destination not found.");
+        throw new ApiError(
+            404,
+            "Destination not found."
+        );
     }
+
 
     // Delete Cover
 
-    if (destination.coverImage?.publicId) {
+    if (
+        destination.coverImage?.publicId
+    ) {
         await deleteFromCloudinary(
             destination.coverImage.publicId
         );
     }
 
-    // Delete Gallery 
+
+    // Delete Gallery
 
     await deleteGalleryImages(
         destination.galleryImages
     );
 
-    // Delete Document 
+
+    // Delete Document
 
     await destination.deleteOne();
 
