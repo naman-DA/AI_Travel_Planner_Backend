@@ -50,7 +50,6 @@ const destinationSchema = new Schema(
       type: String,
       trim: true,
       uppercase: true,
-      sparse: true,
     },
 
     slug: {
