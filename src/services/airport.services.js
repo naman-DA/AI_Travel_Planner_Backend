@@ -91,12 +91,13 @@ const findNearbyAirports = async ({
 
     const nearbyAirports = airports
         .filter((airport) => {
-            return (
-                airport.iata &&
-                Number.isFinite(Number(airport.latitude)) &&
-                Number.isFinite(Number(airport.longitude))
-            );
-        })
+              return (
+                  airport.iata &&
+                  airport.scheduledService === true &&
+                  Number.isFinite(Number(airport.latitude)) &&
+                  Number.isFinite(Number(airport.longitude))
+              );
+          })
 
         // --------------------------------------------------
         // Calculate actual distance

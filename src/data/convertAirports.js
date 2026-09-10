@@ -12,7 +12,8 @@ fs.createReadStream("./src/data/airports.csv")
             iata &&
             row.latitude_deg &&
             row.longitude_deg &&
-            ["large_airport", "medium_airport", "small_airport"].includes(row.type)
+            ["large_airport", "medium_airport", "small_airport"].includes(row.type) &&
+            row.scheduled_service === "yes"
         ) {
             airports.push({
                 iata,
@@ -23,6 +24,7 @@ fs.createReadStream("./src/data/airports.csv")
                 latitude: Number(row.latitude_deg),
                 longitude: Number(row.longitude_deg),
                 type: row.type,
+                scheduledService: row.scheduled_service === "yes",
             });
         }
     })
