@@ -633,10 +633,7 @@ const selectFlightOffer =
             );
 
             if (!tripDocument) {
-                throw new ApiError(
-                    404,
-                    "Trip not found."
-                );
+                throw new ApiError(404, "Trip not found.");
             }
 
             const destinationAirport =
@@ -659,7 +656,32 @@ const selectFlightOffer =
                 );
             }
 
+            // Attach flight offer to trip
             offer.trip = tripDocument._id;
+
+            // Use first flight segment for airline/flight number
+            const firstFlight = offer.flights?.[0];
+
+            tripDocument.selectedFlight = {
+                airline: firstFlight?.airline || "",
+                flightNumber: firstFlight?.flightNumber || "",
+                departureAirport: offer.departureAirport,
+                arrivalAirport: offer.arrivalAirport,
+                departureTime: offer.departureTime,
+                arrivalTime: offer.arrivalTime,
+                cabinClass: "Economy",
+                passengers:
+                    tripDocument.travelers?.adults ||
+                    1,
+                duration: offer.durationText || "",
+                price: offer.price,
+                currency: offer.currency,
+                provider: offer.provider,
+                bookingReference: "",
+                status: "Pending",
+            };
+
+            await tripDocument.save();
         }
 
         await FlightOffer.updateMany(
