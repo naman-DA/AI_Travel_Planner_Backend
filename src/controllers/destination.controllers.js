@@ -1,5 +1,4 @@
 import { destinationService } from "../services/destination.services.js";
-import { findNearestAirport } from "../services/airport.services.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -256,23 +255,6 @@ const filterDestinations = asyncHandler(async (req, res) => {
             200,
             destinations,
             "Destinations filtered successfully."
-        )
-    );
-});
-
-export const getNearestAirport = asyncHandler(async (req, res) => {
-    const { latitude, longitude } = req.query;
-
-    const airport = await findNearestAirport({
-        latitude,
-        longitude,
-    });
-
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            airport,
-            "Nearest airport found successfully."
         )
     );
 });

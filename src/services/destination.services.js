@@ -1,6 +1,6 @@
 import slugify from "slugify";
 import { Destination } from "../models/destination.models.js";
-import { findNearestAirport } from "./airport.services.js";
+import { findNearbyAirports } from "./airport.services.js";
 import { ApiError } from "../utils/ApiError.js";
 
 import {
@@ -543,9 +543,7 @@ const searchDestinations = async (
     };
 };
 
-const saveExternalDestination = async ({
-    destinationData,
-}) => {
+const saveExternalDestination = async ({ destinationData }) => {
     const {
         geoapifyPlaceId,
         name,
@@ -555,7 +553,6 @@ const saveExternalDestination = async ({
         countryCode,
         placeType,
         location,
-        primaryAirportIata,
     } = destinationData;
 
     if (!geoapifyPlaceId) {
@@ -581,6 +578,7 @@ const saveExternalDestination = async ({
 
     if (
         !location?.coordinates ||
+        !Array.isArray(location.coordinates) ||
         location.coordinates.length !== 2
     ) {
         throw new ApiError(
@@ -589,35 +587,33 @@ const saveExternalDestination = async ({
         );
     }
 
-    const existingDestination =
-        await Destination.findOne({
-            geoapifyPlaceId,
-        });
+    // --------------------------------------------------
+    // Check if destination already exists
+    // --------------------------------------------------
+
+    const existingDestination = await Destination.findOne({
+        geoapifyPlaceId,
+    });
 
     if (existingDestination) {
         return existingDestination;
     }
 
-    const [
-        longitude,
+    // GeoJSON = [longitude, latitude]
+    const [longitude, latitude] = location.coordinates;
+
+    // --------------------------------------------------
+    // Find airports from local global airport dataset
+    // --------------------------------------------------
+
+    const airportData = await findNearbyAirports({
         latitude,
-    ] = location.coordinates;
+        longitude,
+    });
 
-    let resolvedAirportIata =
-        primaryAirportIata || null;
-
-    let resolvedAirport = null;
-
-    if (!resolvedAirportIata) {
-        resolvedAirport =
-            await findNearestAirport({
-                latitude,
-                longitude,
-            });
-
-        resolvedAirportIata =
-            resolvedAirport?.airportCode || null;
-    }
+    // --------------------------------------------------
+    // Generate unique slug
+    // --------------------------------------------------
 
     const slug = slugify(
         `${name}-${city || ""}-${country}`,
@@ -627,37 +623,36 @@ const saveExternalDestination = async ({
         }
     );
 
-    const destination =
-        await Destination.create({
-            name,
-            city: city || name,
-            state: state || "",
-            country,
-            countryCode:
-                countryCode?.toUpperCase() || "",
-            placeType: placeType || "",
-            geoapifyPlaceId,
-            location,
-            slug,
-            primaryAirportIata:
-                resolvedAirportIata,
-            nearbyAirports:
-                resolvedAirport
-                    ? [
-                          {
-                              airportName:
-                                  resolvedAirport.airportName,
+    // --------------------------------------------------
+    // Create destination
+    // --------------------------------------------------
 
-                              airportCode:
-                                  resolvedAirport.airportCode,
+    const destination = await Destination.create({
+        name,
+        city,
+        state,
+        country,
+        countryCode,
+        placeType,
+        geoapifyPlaceId,
 
-                              distance:
-                                  resolvedAirport.distance,
-                          },
-                      ]
-                    : [],
-            isActive: true,
-        });
+        primaryAirportIata:
+            airportData.primaryAirportIata,
+
+        nearbyAirports:
+            airportData.nearbyAirports,
+
+        location: {
+            type: "Point",
+            coordinates: [
+                Number(longitude),
+                Number(latitude),
+            ],
+        },
+
+        slug,
+        isActive: true,
+    });
 
     return destination;
 };
