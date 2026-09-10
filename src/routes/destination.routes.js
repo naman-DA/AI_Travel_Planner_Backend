@@ -11,6 +11,10 @@ import {
     saveExternalDestination,
 } from "../controllers/destination.controllers.js";
 
+import {
+    getNearestAirport,
+} from "../controllers/destination.controllers.js";
+
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 
 import { upload } from "../middlewares/multer.middlewares.js";
@@ -34,6 +38,12 @@ router.get(
 router.get(
     "/filter",
     filterDestinations
+);
+
+router.get(
+    "/nearest-airport",
+    verifyJWT,
+    getNearestAirport
 );
 
 router.get(

@@ -1,5 +1,6 @@
 import slugify from "slugify";
 import { Destination } from "../models/destination.models.js";
+import { findNearestAirport } from "./airport.services.js";
 import { ApiError } from "../utils/ApiError.js";
 
 import {
@@ -545,18 +546,17 @@ const searchDestinations = async (
 const saveExternalDestination = async ({
     destinationData,
 }) => {
-
     const {
         geoapifyPlaceId,
         name,
         city,
-        state = "",
+        state,
         country,
-        countryCode = "",
-        placeType = "",
+        countryCode,
+        placeType,
         location,
+        primaryAirportIata,
     } = destinationData;
-
 
     if (!geoapifyPlaceId) {
         throw new ApiError(
@@ -565,28 +565,22 @@ const saveExternalDestination = async ({
         );
     }
 
-
-    if (!name?.trim()) {
+    if (!name) {
         throw new ApiError(
             400,
             "Destination name is required."
         );
     }
 
-
-    if (!country?.trim()) {
+    if (!country) {
         throw new ApiError(
             400,
             "Country is required."
         );
     }
 
-
     if (
-        !location ||
-        !Array.isArray(
-            location.coordinates
-        ) ||
+        !location?.coordinates ||
         location.coordinates.length !== 2
     ) {
         throw new ApiError(
@@ -595,58 +589,75 @@ const saveExternalDestination = async ({
         );
     }
 
-
-    // Check duplicate
-
-    const existing =
+    const existingDestination =
         await Destination.findOne({
             geoapifyPlaceId,
         });
 
-
-    if (existing) {
-        return existing;
+    if (existingDestination) {
+        return existingDestination;
     }
 
+    const [
+        longitude,
+        latitude,
+    ] = location.coordinates;
 
-    const slug =
-        generateSlug(
-            name,
-            city || name,
-            country
-        );
+    let resolvedAirportIata =
+        primaryAirportIata || null;
 
+    let resolvedAirport = null;
+
+    if (!resolvedAirportIata) {
+        resolvedAirport =
+            await findNearestAirport({
+                latitude,
+                longitude,
+            });
+
+        resolvedAirportIata =
+            resolvedAirport?.airportCode || null;
+    }
+
+    const slug = slugify(
+        `${name}-${city || ""}-${country}`,
+        {
+            lower: true,
+            strict: true,
+        }
+    );
 
     const destination =
         await Destination.create({
-
             name,
-
-            city:
-                city || name,
-
-            state,
-
+            city: city || name,
+            state: state || "",
             country,
-
             countryCode:
-                countryCode.toUpperCase(),
-
-            placeType,
-
+                countryCode?.toUpperCase() || "",
+            placeType: placeType || "",
             geoapifyPlaceId,
-
-            primaryAirportIata:
-                destinationData.primaryAirportIata ||
-                null,
-
             location,
-
             slug,
+            primaryAirportIata:
+                resolvedAirportIata,
+            nearbyAirports:
+                resolvedAirport
+                    ? [
+                          {
+                              airportName:
+                                  resolvedAirport.airportName,
 
+                              airportCode:
+                                  resolvedAirport.airportCode,
+
+                              distance:
+                                  resolvedAirport.distance,
+                          },
+                      ]
+                    : [],
             isActive: true,
         });
-
 
     return destination;
 };
