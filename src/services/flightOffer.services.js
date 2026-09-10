@@ -623,12 +623,14 @@ const selectFlightOffer =
         }
 
         if (trip) {
-            const tripDocument =
-                await Trip.findOne({
-                    _id: trip,
-                    user,
-                    isActive: true,
-                });
+            const tripDocument = await Trip.findOne({
+                _id: trip,
+                user,
+                isActive: true,
+            }).populate(
+                "destination",
+                "name city country primaryAirportIata nearbyAirports"
+            );
 
             if (!tripDocument) {
                 throw new ApiError(
@@ -637,8 +639,27 @@ const selectFlightOffer =
                 );
             }
 
-            offer.trip =
-                tripDocument._id;
+            const destinationAirport =
+                tripDocument.destination?.primaryAirportIata;
+
+            if (!destinationAirport) {
+                throw new ApiError(
+                    400,
+                    "Primary airport is not configured for this trip destination."
+                );
+            }
+
+            if (
+                offer.arrivalAirport?.toUpperCase() !==
+                destinationAirport.toUpperCase()
+            ) {
+                throw new ApiError(
+                    400,
+                    `Selected flight does not arrive at the trip destination airport (${destinationAirport}).`
+                );
+            }
+
+            offer.trip = tripDocument._id;
         }
 
         await FlightOffer.updateMany(

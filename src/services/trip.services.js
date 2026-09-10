@@ -17,7 +17,7 @@ const populateTrip = (query) => {
         )
         .populate(
             "destination",
-            "name city state country slug"
+            "name city state country slug primaryAirportIata nearbyAirports"
         )
         .populate(
             "hotel",
