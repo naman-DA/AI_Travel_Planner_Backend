@@ -189,18 +189,16 @@ const findNearbyAirports = async ({
         primaryAirportIata: primaryAirport.iata,
 
         nearbyAirports: nearbyAirports.map((airport) => ({
-            iata: airport.iata,
-            icao: airport.icao || null,
-            name: airport.name || "",
-            city: airport.city || "",
-            countryCode: airport.countryCode || "",
-            latitude: Number(airport.latitude),
-            longitude: Number(airport.longitude),
-            distanceKm: Number(
-                airport.distanceKm.toFixed(2)
-            ),
-            type: airport.type || null,
-        })),
+          airportName: airport.name || "",
+          airportCode: airport.iata,
+          icao: airport.icao || null,
+          city: airport.city || "",
+          countryCode: airport.countryCode || "",
+          latitude: Number(airport.latitude),
+          longitude: Number(airport.longitude),
+          distance: Number(airport.distanceKm.toFixed(2)),
+          type: airport.type || null,
+      })),
     };
 };
 

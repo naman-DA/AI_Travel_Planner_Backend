@@ -4,9 +4,54 @@ import mongoose, { Schema } from "mongoose";
 
 const airportSchema = new Schema(
   {
-    airportName: String,
-    airportCode: String,
-    distance: Number,
+    airportName: {
+      type: String,
+      trim: true,
+    },
+
+    airportCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+
+    icao: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+
+    city: {
+      type: String,
+      trim: true,
+    },
+
+    countryCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+
+    latitude: {
+      type: Number,
+    },
+
+    longitude: {
+      type: Number,
+    },
+
+    distance: {
+      type: Number,
+    },
+
+    type: {
+      type: String,
+      enum: [
+        "large_airport",
+        "medium_airport",
+        "small_airport",
+      ],
+    },
   },
   {
     _id: false,
