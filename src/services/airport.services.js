@@ -16,18 +16,66 @@ const findNearestAirport = async ({ latitude, longitude }) => {
             params: {
                 categories: "airport",
                 filter: `circle:${Number(longitude)},${Number(latitude)},200000`,
-                limit: 10,
+                limit: 20,
                 apiKey: GEOAPIFY_API_KEY,
             },
         });
 
-        console.log(
-            "Geoapify airport response:",
-            JSON.stringify(response.data, null, 2)
+        const features = response.data?.features || [];
+
+        if (!features.length) {
+            return null;
+        }
+
+        const airports = features
+            .map((feature) => {
+                const properties = feature.properties || {};
+
+                const [airportLongitude, airportLatitude] =
+                    feature.geometry?.coordinates || [];
+
+                const airportCode =
+                    properties.airport?.iata ||
+                    properties.datasource?.raw?.iata ||
+                    null;
+
+                return {
+                    airportName:
+                        properties.name ||
+                        properties.formatted ||
+                        "",
+
+                    airportCode,
+
+                    icaoCode:
+                        properties.airport?.icao ||
+                        properties.datasource?.raw?.icao ||
+                        null,
+
+                    distance: properties.distance || null,
+
+                    latitude: airportLatitude ?? null,
+
+                    longitude: airportLongitude ?? null,
+
+                    formatted: properties.formatted || "",
+
+                    placeId: properties.place_id || null,
+                };
+            })
+            .filter((airport) => airport.airportCode);
+
+        if (!airports.length) {
+            return null;
+        }
+
+        airports.sort(
+            (a, b) =>
+                (a.distance ?? Infinity) -
+                (b.distance ?? Infinity)
         );
 
-        return response.data;
-
+        return airports[0];
     } catch (error) {
         console.error(
             "Airport lookup failed:",
@@ -41,6 +89,4 @@ const findNearestAirport = async ({ latitude, longitude }) => {
     }
 };
 
-export {
-    findNearestAirport,
-};
+export { findNearestAirport };
