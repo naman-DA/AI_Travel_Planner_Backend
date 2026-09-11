@@ -198,13 +198,15 @@ const normalizeExternalHotel = ({
 
                 const providerTotal =
                     Number(
-                        hotel.price.total ??
+                        hotel.price?.totalPrice ??
+                        hotel.price?.total ??
                         0
                     );
 
                 const taxes =
                     Number(
-                        hotel.price.taxes ??
+                        hotel.price?.fees?.taxes ??
+                        hotel.price?.taxes ??
                         0
                     );
 
@@ -841,25 +843,13 @@ const searchExternalHotels = async ({
                 "/v1/search",
                 {
                     params: {
-                        location:
-                            `${destination.city}, ${destination.country}`,
-
+                        location: `${destination.city}, ${destination.country}`,
                         checkIn,
-
                         checkOut,
-
-                        adults:
-                            Number(adults),
-
+                        adults: Number(adults),
                         children: 0,
-
-                        platforms:
-                            "booking",
-
-                        limit: Math.min(
-                            Number(limit) || 20,
-                            50
-                        ),
+                        platforms: "airbnb,booking",
+                        limit: Math.min(Number(limit) || 20, 50),
                     },
                 }
             );
