@@ -158,6 +158,101 @@ const selectedFlightSchema = new Schema(
     }
 );
 
+// Selected Hotel Schema
+
+const selectedHotelSchema = new Schema(
+    {
+        hotel: {
+            type: Schema.Types.ObjectId,
+            ref: "Hotel",
+            default: null,
+        },
+
+        name: {
+            type: String,
+            default: "",
+        },
+
+        externalHotelId: {
+            type: String,
+            default: "",
+        },
+
+        checkIn: {
+            type: Date,
+            default: null,
+        },
+
+        checkOut: {
+            type: Date,
+            default: null,
+        },
+
+        nights: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        rooms: {
+            type: Number,
+            default: 1,
+            min: 1,
+        },
+
+        guests: {
+            type: Number,
+            default: 1,
+            min: 1,
+        },
+
+        pricePerNight: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        totalPrice: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        currency: {
+            type: String,
+            default: "INR",
+        },
+
+        provider: {
+            type: String,
+            default: "",
+        },
+
+        bookingUrl: {
+            type: String,
+            default: "",
+        },
+
+        bookingReference: {
+            type: String,
+            default: "",
+        },
+
+        status: {
+            type: String,
+            enum: [
+                "Pending",
+                "Booked",
+                "Cancelled",
+            ],
+            default: "Pending",
+        },
+    },
+    {
+        _id: false,
+    }
+);
+
 // Itinerary Item
 
 const itineraryItemSchema = new Schema(
@@ -335,6 +430,11 @@ const tripSchema = new Schema(
 
     selectedFlight: {
       type: selectedFlightSchema,
+      default: null,
+    },
+
+    selectedHotel: {
+      type: selectedHotelSchema,
       default: null,
     },
 

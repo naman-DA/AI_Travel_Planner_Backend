@@ -2,6 +2,7 @@ import slugify from "slugify";
 import { Hotel } from "../models/hotel.models.js";
 import axios from "axios";
 import { Destination } from "../models/destination.models.js";
+import { Trip } from "../models/trip.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import {
     uploadOnCloudinary,
@@ -1054,6 +1055,7 @@ const searchExternalHotels = async ({
 
 const saveExternalHotel = async ({
     hotelData,
+    trip,
 }) => {
     const {
         externalProvider,
@@ -1072,77 +1074,65 @@ const saveExternalHotel = async ({
         averageRating = 0,
         reviewCount = 0,
         pricePerNight = 0,
-        currency = "EUR",
+        currency = "INR",
         amenities = [],
+        checkIn,
+        checkOut,
+        nights = 0,
+        rooms = 1,
+        guests = 1,
+        totalPrice = 0,
     } = hotelData;
 
     if (!destination) {
-        throw new ApiError(
-            400,
-            "Destination is required."
-        );
+        throw new ApiError(400, "Destination is required.");
     }
 
-    const destinationExists =
-        await Destination.exists({
-            _id: destination,
-            isActive: true,
-        });
+    if (!mongoose.Types.ObjectId.isValid(destination)) {
+        throw new ApiError(400, "Invalid destination ID.");
+    }
+
+    const destinationExists = await Destination.exists({
+        _id: destination,
+        isActive: true,
+    });
 
     if (!destinationExists) {
-        throw new ApiError(
-            404,
-            "Destination not found."
-        );
+        throw new ApiError(404, "Destination not found.");
     }
 
     if (!externalHotelId) {
-        throw new ApiError(
-            400,
-            "External hotel ID is required."
+        throw new ApiError(400, "External hotel ID is required.");
+    }
+
+    // Find existing hotel or create it
+    let hotel = await Hotel.findOne({
+        externalProvider,
+        externalHotelId,
+    });
+
+    if (!hotel) {
+        const slug = generateSlug(
+            name,
+            city,
+            country
         );
-    }
 
-    const existing =
-        await Hotel.findOne({
-            externalProvider,
-            externalHotelId,
-        });
-
-    if (existing) {
-        return existing;
-    }
-
-    const slug = generateSlug(
-        name,
-        city,
-        country
-    );
-
-    const hotel =
-        await Hotel.create({
+        hotel = await Hotel.create({
             name,
             slug,
-
             destination,
-
             address,
             city,
             state,
             country,
-
             location,
-
             hotelType,
 
-            starRating:
-                Math.min(
-                    Math.max(
-                        Number(starRating) || 1,
-                        1
-                    ),
-                    5
-                ),
+            starRating: Math.min(
+                Math.max(Number(starRating) || 1, 1),
+                5
+            ),
 
             averageRating:
                 Number(averageRating) || 0,
@@ -1154,11 +1144,9 @@ const saveExternalHotel = async ({
                 Number(pricePerNight) || 0,
 
             currency,
-
             amenities,
 
             externalProvider,
-
             externalHotelId,
 
             externalListingId:
@@ -1169,6 +1157,108 @@ const saveExternalHotel = async ({
 
             isActive: true,
         });
+    }
+
+    // Attach hotel to Trip
+    if (trip) {
+        if (!mongoose.Types.ObjectId.isValid(trip)) {
+            throw new ApiError(
+                400,
+                "Invalid trip ID."
+            );
+        }
+
+        const tripDocument = await Trip.findOne({
+            _id: trip,
+            destination,
+            isActive: true,
+        });
+
+        if (!tripDocument) {
+            throw new ApiError(
+                404,
+                "Trip not found or does not belong to this destination."
+            );
+        }
+
+        tripDocument.hotel = hotel._id;
+
+        tripDocument.selectedHotel = {
+            hotel: hotel._id,
+
+            name: hotel.name,
+
+            externalHotelId:
+                hotel.externalHotelId || "",
+
+            checkIn:
+                checkIn
+                    ? new Date(checkIn)
+                    : tripDocument.startDate,
+
+            checkOut:
+                checkOut
+                    ? new Date(checkOut)
+                    : tripDocument.endDate,
+
+            nights:
+                Number(nights) ||
+                Math.max(
+                    Math.ceil(
+                        (
+                            new Date(
+                                checkOut ||
+                                tripDocument.endDate
+                            ) -
+                            new Date(
+                                checkIn ||
+                                tripDocument.startDate
+                            )
+                        ) /
+                        (1000 * 60 * 60 * 24)
+                    ),
+                    0
+                ),
+
+            rooms:
+                Number(rooms) || 1,
+
+            guests:
+                Number(guests) ||
+                tripDocument.travelers?.adults ||
+                1,
+
+            pricePerNight:
+                Number(pricePerNight) || 0,
+
+            totalPrice:
+                Number(totalPrice) ||
+                (
+                    Number(pricePerNight) || 0
+                ) *
+                (
+                    Number(nights) || 0
+                ),
+
+            currency:
+                currency || "INR",
+
+            provider:
+                externalProvider ||
+                "StayingAPI",
+
+            bookingUrl:
+                bookingUrl ||
+                hotel.bookingUrl ||
+                "",
+
+            bookingReference: "",
+
+            status: "Pending",
+        };
+
+        await tripDocument.save();
+    }
 
     return hotel;
 };
