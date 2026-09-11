@@ -167,12 +167,12 @@ const searchExternalHotels =
 
 const saveExternalHotel =
     asyncHandler(async (req, res) => {
-        const hotel =
-            await hotelService.saveExternalHotel({
-                hotelData: req.body,
-                trip: req.body.trip,
-            });
-
+        const hotel = await hotelService.saveExternalHotel({
+            hotelData: req.body,
+            trip: req.body.trip,
+            user: req.user._id,
+        });
+        
         return res.status(200).json(
             new ApiResponse(
                 200,

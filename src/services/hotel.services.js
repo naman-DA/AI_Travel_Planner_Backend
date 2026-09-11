@@ -1046,9 +1046,10 @@ const searchExternalHotels = async ({
 const saveExternalHotel = async ({
     hotelData,
     trip,
+    user,
 }) => {
     const {
-        externalProvider,
+        externalProvider = "StayingAPI",
         externalHotelId,
         externalListingId,
         bookingUrl,
@@ -1074,32 +1075,60 @@ const saveExternalHotel = async ({
         totalPrice = 0,
     } = hotelData;
 
+    // -----------------------------
+    // Validate destination
+    // -----------------------------
+
     if (!destination) {
-        throw new ApiError(400, "Destination is required.");
+        throw new ApiError(
+            400,
+            "Destination is required."
+        );
     }
 
     if (!mongoose.Types.ObjectId.isValid(destination)) {
-        throw new ApiError(400, "Invalid destination ID.");
+        throw new ApiError(
+            400,
+            "Invalid destination ID."
+        );
     }
 
-    const destinationExists = await Destination.exists({
-        _id: destination,
-        isActive: true,
-    });
+    const destinationExists =
+        await Destination.exists({
+            _id: destination,
+            isActive: true,
+        });
 
     if (!destinationExists) {
-        throw new ApiError(404, "Destination not found.");
+        throw new ApiError(
+            404,
+            "Destination not found."
+        );
     }
+
+    // -----------------------------
+    // Validate external hotel
+    // -----------------------------
 
     if (!externalHotelId) {
-        throw new ApiError(400, "External hotel ID is required.");
+        throw new ApiError(
+            400,
+            "External hotel ID is required."
+        );
     }
 
-    // Find existing hotel or create it
+    // -----------------------------
+    // Find existing hotel
+    // -----------------------------
+
     let hotel = await Hotel.findOne({
         externalProvider,
         externalHotelId,
     });
+
+    // -----------------------------
+    // Create hotel if it doesn't exist
+    // -----------------------------
 
     if (!hotel) {
         const slug = generateSlug(
@@ -1120,7 +1149,10 @@ const saveExternalHotel = async ({
             hotelType,
 
             starRating: Math.min(
-                Math.max(Number(starRating) || 1, 1),
+                Math.max(
+                    Number(starRating) || 1,
+                    1
+                ),
                 5
             ),
 
@@ -1134,9 +1166,11 @@ const saveExternalHotel = async ({
                 Number(pricePerNight) || 0,
 
             currency,
+
             amenities,
 
             externalProvider,
+
             externalHotelId,
 
             externalListingId:
@@ -1147,9 +1181,44 @@ const saveExternalHotel = async ({
 
             isActive: true,
         });
+    } else {
+        // -----------------------------
+        // Refresh current provider data
+        // -----------------------------
+
+        hotel.pricePerNight =
+            Number(pricePerNight) || 0;
+
+        hotel.currency = currency;
+
+        hotel.bookingUrl =
+            bookingUrl ||
+            hotel.bookingUrl ||
+            null;
+
+        hotel.externalListingId =
+            externalListingId ||
+            hotel.externalListingId ||
+            null;
+
+        hotel.averageRating =
+            Number(averageRating) || 0;
+
+        hotel.reviewCount =
+            Number(reviewCount) || 0;
+
+        hotel.amenities =
+            Array.isArray(amenities)
+                ? amenities
+                : hotel.amenities;
+
+        await hotel.save();
     }
 
+    // -----------------------------
     // Attach hotel to Trip
+    // -----------------------------
+
     if (trip) {
         if (!mongoose.Types.ObjectId.isValid(trip)) {
             throw new ApiError(
@@ -1158,11 +1227,21 @@ const saveExternalHotel = async ({
             );
         }
 
-        const tripDocument = await Trip.findOne({
+        // IMPORTANT:
+        // Also verify the trip belongs to
+        // the authenticated user.
+        const tripQuery = {
             _id: trip,
             destination,
             isActive: true,
-        });
+        };
+
+        if (user) {
+            tripQuery.user = user;
+        }
+
+        const tripDocument =
+            await Trip.findOne(tripQuery);
 
         if (!tripDocument) {
             throw new ApiError(
@@ -1171,64 +1250,118 @@ const saveExternalHotel = async ({
             );
         }
 
-        tripDocument.hotel = hotel._id;
+        // -----------------------------
+        // Calculate dates
+        // -----------------------------
+
+        const selectedCheckIn =
+            checkIn
+                ? new Date(checkIn)
+                : tripDocument.startDate;
+
+        const selectedCheckOut =
+            checkOut
+                ? new Date(checkOut)
+                : tripDocument.endDate;
+
+        if (
+            Number.isNaN(
+                selectedCheckIn?.getTime()
+            ) ||
+            Number.isNaN(
+                selectedCheckOut?.getTime()
+            )
+        ) {
+            throw new ApiError(
+                400,
+                "Invalid hotel check-in or check-out date."
+            );
+        }
+
+        if (
+            selectedCheckOut <=
+            selectedCheckIn
+        ) {
+            throw new ApiError(
+                400,
+                "Hotel check-out date must be after check-in date."
+            );
+        }
+
+        // -----------------------------
+        // Calculate nights ONCE
+        // -----------------------------
+
+        const calculatedNights = Math.max(
+            Math.ceil(
+                (
+                    selectedCheckOut -
+                    selectedCheckIn
+                ) /
+                (1000 * 60 * 60 * 24)
+            ),
+            0
+        );
+
+        const selectedNights =
+            Number(nights) > 0
+                ? Number(nights)
+                : calculatedNights;
+
+        // -----------------------------
+        // Calculate price
+        // -----------------------------
+
+        const selectedPricePerNight =
+            Number(pricePerNight) || 0;
+
+        const selectedTotalPrice =
+            Number(totalPrice) > 0
+                ? Number(totalPrice)
+                : selectedPricePerNight *
+                  selectedNights;
+
+        // -----------------------------
+        // Update Trip
+        // -----------------------------
+
+        tripDocument.hotel =
+            hotel._id;
 
         tripDocument.selectedHotel = {
             hotel: hotel._id,
 
-            name: hotel.name,
+            name:
+                hotel.name || "",
 
             externalHotelId:
                 hotel.externalHotelId || "",
 
             checkIn:
-                checkIn
-                    ? new Date(checkIn)
-                    : tripDocument.startDate,
+                selectedCheckIn,
 
             checkOut:
-                checkOut
-                    ? new Date(checkOut)
-                    : tripDocument.endDate,
+                selectedCheckOut,
 
             nights:
-                Number(nights) ||
-                Math.max(
-                    Math.ceil(
-                        (
-                            new Date(
-                                checkOut ||
-                                tripDocument.endDate
-                            ) -
-                            new Date(
-                                checkIn ||
-                                tripDocument.startDate
-                            )
-                        ) /
-                        (1000 * 60 * 60 * 24)
-                    ),
-                    0
-                ),
+                selectedNights,
 
             rooms:
-                Number(rooms) || 1,
+                Number(rooms) > 0
+                    ? Number(rooms)
+                    : 1,
 
             guests:
-                Number(guests) ||
-                tripDocument.travelers?.adults ||
-                1,
+                Number(guests) > 0
+                    ? Number(guests)
+                    : tripDocument.travelers?.adults ||
+                      1,
 
             pricePerNight:
-                Number(pricePerNight) || 0,
+                selectedPricePerNight,
 
             totalPrice:
-                Number(totalPrice) ||
-                (
-                    Number(pricePerNight) || 0
-                ) *
-                (
-                    Number(nights) || 0
-                ),
+                selectedTotalPrice,
 
             currency:
                 currency || "INR",
